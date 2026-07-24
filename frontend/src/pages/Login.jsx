@@ -8,7 +8,7 @@ import logoImg from '../assets/logo.png';
 // import slide1 from '../assets/slide1.jpg';
 // import slide2 from '../assets/slide2.jpg';
 // import slide3 from '../assets/slide3.jpg';
-// import bg from '../assets/bg.png';
+// import bg from '../assets/BG.png';
 import loginBg from '../assets/login-bg.jpg';
 
 const Login = () => {
@@ -136,7 +136,7 @@ const Login = () => {
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="e.g. rakesh.reddy (Admin) or rahul.sharma (Employee)"
+                placeholder="Email"
                 className="w-full pl-10 pr-4 py-3 border border-slate-200 bg-white rounded-2xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all font-medium shadow-sm"
               />
             </div>
@@ -152,7 +152,7 @@ const Login = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Password"
                 className="w-full pl-10 pr-10 py-3 border border-slate-200 bg-white rounded-2xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all font-medium shadow-sm"
               />
               <button
