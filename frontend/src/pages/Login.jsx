@@ -51,7 +51,8 @@ const Login = () => {
       cleanUser === 'teja adusumilli' ||
       cleanUser === 'rakesh' ||
       cleanUser === 'rakesh.reddy' ||
-      cleanUser === 'rakesh reddy'
+      cleanUser === 'rakesh reddy' ||
+      cleanUser == 'jagadish.prabhakar@quadrantitservices.com'
     ) ? 'Admin' : 'Employee';
 
     const result = loginUser(trimmedUser, password, detectedRole);
