@@ -1129,6 +1129,12 @@ export const AssetProvider = ({ children }) => {
     localStorage.removeItem('it_current_user');
   };
 
+  const markNotificationAsRead = (id) => {
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('it_notifications', JSON.stringify(updated));
+  };
+
   const [toast, setToast] = useState(null);
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -1150,6 +1156,7 @@ export const AssetProvider = ({ children }) => {
       assets,
       repairs,
       notifications,
+      markNotificationAsRead,
       activity,
       currentUser,
       loginUser,

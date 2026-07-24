@@ -8,7 +8,7 @@ import QuadrantLogo from './QuadrantLogo';
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { notifications, currentUser, loginUser, logoutUser, showToast } = useAssetManager();
+  const { notifications, markNotificationAsRead, currentUser, loginUser, logoutUser, showToast } = useAssetManager();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
@@ -163,7 +163,8 @@ const Header = () => {
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      className={`p-4 transition-all hover:bg-slate-50 flex items-start gap-3 ${!notif.read ? 'bg-blue-50/20' : ''}`}
+                      onClick={() => markNotificationAsRead(notif.id)}
+                      className={`p-4 transition-all hover:bg-slate-50 flex items-start gap-3 cursor-pointer ${!notif.read ? 'bg-blue-50/20' : ''}`}
                     >
                       <span className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 ${notif.type === 'success' ? 'bg-green-500' :
                           notif.type === 'warning' ? 'bg-amber-500' :
