@@ -5,10 +5,10 @@ import { useAssetManager } from '../hooks/useAssetManager';
 import QuadrantLogo from '../components/QuadrantLogo';
 import logoImg from '../assets/logo.png';
 
-import slide1 from '../assets/slide1.jpg';
-import slide2 from '../assets/slide2.jpg';
-import slide3 from '../assets/slide3.jpg';
-import bg from '../assets/bg.png';
+// import slide1 from '../assets/slide1.jpg';
+// import slide2 from '../assets/slide2.jpg';
+// import slide3 from '../assets/slide3.jpg';
+// import bg from '../assets/bg.png';
 import loginBg from '../assets/login-bg.jpg';
 
 const Login = () => {
@@ -46,11 +46,11 @@ const Login = () => {
     // Auto-detect role: teja and rakesh variants are Admins, everything else is Employee
     const cleanUser = trimmedUser.toLowerCase();
     const detectedRole = (
-      cleanUser === 'teja' || 
-      cleanUser === 'teja.adusumilli' || 
+      cleanUser === 'teja' ||
+      cleanUser === 'teja.adusumilli' ||
       cleanUser === 'teja adusumilli' ||
-      cleanUser === 'rakesh' || 
-      cleanUser === 'rakesh.reddy' || 
+      cleanUser === 'rakesh' ||
+      cleanUser === 'rakesh.reddy' ||
       cleanUser === 'rakesh reddy'
     ) ? 'Admin' : 'Employee';
 
