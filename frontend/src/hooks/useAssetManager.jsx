@@ -1064,6 +1064,20 @@ export const AssetProvider = ({ children }) => {
           location: "Hyderabad, India",
           joiningDate: "01 Jan 2024"
         };
+      } else if (cleanUser === 'jagadish.prabhakar@quadrantitservices.com' || cleanUser === 'jagadish.prabhakar' || cleanUser === 'jagadish prabhakar') {
+        adminSession = {
+          id: "EMP002",
+          name: "Jagadish Prabhakar",
+          username: "jagadish.prabhakar@quadrantitservices.com",
+          role: "Admin",
+          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=faces",
+          email: "jagadish.prabhakar@quadrantitservices.com",
+          phone: "+91 98765 43212",
+          department: "IT",
+          designation: "Executive Director",
+          location: "Hyderabad, India",
+          joiningDate: "15 Jun 2023"
+        };
       } else {
         const formattedName = username.trim().split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
         adminSession = {

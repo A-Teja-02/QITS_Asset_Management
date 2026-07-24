@@ -32,6 +32,7 @@ const Login = () => {
   const [role, setRole] = useState('Admin'); // Admin | Employee
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -43,7 +44,7 @@ const Login = () => {
       return;
     }
 
-    // Auto-detect role: teja and rakesh variants are Admins, everything else is Employee
+    // Auto-detect role: teja, rakesh, and jagadish variants are Admins, everything else is Employee
     const cleanUser = trimmedUser.toLowerCase();
     const detectedRole = (
       cleanUser === 'teja' ||
@@ -51,19 +52,27 @@ const Login = () => {
       cleanUser === 'teja adusumilli' ||
       cleanUser === 'rakesh' ||
       cleanUser === 'rakesh.reddy' ||
-      cleanUser === 'rakesh reddy'
+      cleanUser === 'rakesh reddy' ||
+      cleanUser === 'jagadish.prabhakar@quadrantitservices.com' ||
+      cleanUser === 'jagadish.prabhakar' ||
+      cleanUser === 'jagadish prabhakar'
     ) ? 'Admin' : 'Employee';
 
-    const result = loginUser(trimmedUser, password, detectedRole);
-    if (result.success) {
-      if (result.user.role === 'Admin') {
-        navigate('/');
+    setIsLoggingIn(true);
+
+    setTimeout(() => {
+      const result = loginUser(trimmedUser, password, detectedRole);
+      if (result.success) {
+        if (result.user.role === 'Admin') {
+          navigate('/');
+        } else {
+          navigate('/employee');
+        }
       } else {
-        navigate('/employee');
+        setErrorMsg(result.message);
+        setIsLoggingIn(false);
       }
-    } else {
-      setErrorMsg(result.message);
-    }
+    }, 800);
   };
 
   const handleSandboxLogin = (sandboxUsername, sandboxPassword, sandboxRole) => {
@@ -167,10 +176,25 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-1.5 transition-all mt-6"
+            disabled={isLoggingIn}
+            className={`w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-1.5 transition-all mt-6 ${
+              isLoggingIn ? 'opacity-80 scale-[0.98]' : 'active:scale-95'
+            }`}
           >
-            <LogIn className="h-4 w-4" />
-            <span>Sign In</span>
+            {isLoggingIn ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4" />
+                <span>Sign In</span>
+              </>
+            )}
           </button>
         </form>
 
