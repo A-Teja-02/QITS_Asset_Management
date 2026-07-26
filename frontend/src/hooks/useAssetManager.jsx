@@ -261,7 +261,7 @@ export const AssetProvider = ({ children }) => {
         const brand = brandList[i % brandList.length];
         const modelList = models[type];
         const model = modelList[i % modelList.length];
-        
+
         let status = "Available";
         let assignedTo = null;
         if (i <= 180) {
@@ -293,6 +293,12 @@ export const AssetProvider = ({ children }) => {
           num = qitsCounter++;
         }
 
+        const purchaseDateStr = `${String(1 + (i % 28)).padStart(2, '0')} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i % 12]} 2024`;
+        const warrantyEndDateStr = `${String(1 + (i % 28)).padStart(2, '0')} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i % 12]} 2027`;
+        const chargerSn = type === 'Laptop' ? `CHG-SN-${String(80000000 + i * 93).substring(0, 8)}` : 'N/A';
+        const cond = i % 12 === 0 ? 'Poor' : i % 4 === 0 ? 'Working' : 'Good';
+        const assignedDateStr = status === 'Assigned' ? `${String(1 + ((i + 5) % 28)).padStart(2, '0')} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][(i + 1) % 12]} 2024` : 'N/A';
+
         generatedAssets.push({
           id: `${prefix}${String(num).padStart(4, '0')}`,
           type: type,
@@ -302,8 +308,11 @@ export const AssetProvider = ({ children }) => {
           status: status,
           ownership: ownership,
           assignedTo: assignedTo,
-          purchaseDate: `${String(1 + (i % 28)).padStart(2, '0')} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i % 12]} 2024`,
-          warrantyEndDate: `${String(1 + (i % 28)).padStart(2, '0')} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i % 12]} 2027`,
+          purchaseDate: purchaseDateStr,
+          warrantyEndDate: warrantyEndDateStr,
+          chargerSerialNumber: chargerSn,
+          condition: cond,
+          assignedDate: assignedDateStr,
           image: images[type]
         });
       }
@@ -321,6 +330,9 @@ export const AssetProvider = ({ children }) => {
           assignedTo: "EMP1005",
           purchaseDate: "10 May 2024",
           warrantyEndDate: "10 May 2027",
+          chargerSerialNumber: "CHG-DELL-5420X1",
+          condition: "Good",
+          assignedDate: "12 May 2024",
           image: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=80&h=80&fit=crop"
         },
         {
@@ -334,6 +346,9 @@ export const AssetProvider = ({ children }) => {
           assignedTo: "EMP1005",
           purchaseDate: "10 May 2024",
           warrantyEndDate: "10 May 2027",
+          chargerSerialNumber: "N/A",
+          condition: "Good",
+          assignedDate: "12 May 2024",
           image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=80&h=80&fit=crop"
         },
         {
@@ -347,6 +362,9 @@ export const AssetProvider = ({ children }) => {
           assignedTo: "EMP1005",
           purchaseDate: "10 May 2024",
           warrantyEndDate: "10 May 2027",
+          chargerSerialNumber: "N/A",
+          condition: "Good",
+          assignedDate: "12 May 2024",
           image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=80&h=80&fit=crop"
         },
         {
@@ -360,6 +378,9 @@ export const AssetProvider = ({ children }) => {
           assignedTo: "EMP1005",
           purchaseDate: "10 May 2024",
           warrantyEndDate: "10 May 2027",
+          chargerSerialNumber: "N/A",
+          condition: "Good",
+          assignedDate: "12 May 2024",
           image: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=80&h=80&fit=crop"
         },
         {
@@ -373,6 +394,9 @@ export const AssetProvider = ({ children }) => {
           assignedTo: "EMP1005",
           purchaseDate: "10 May 2024",
           warrantyEndDate: "10 May 2027",
+          chargerSerialNumber: "N/A",
+          condition: "Good",
+          assignedDate: "12 May 2024",
           image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=80&h=80&fit=crop"
         }
       ];
@@ -396,7 +420,7 @@ export const AssetProvider = ({ children }) => {
         const reporterId = `EMP${String(1 + (i % 5)).padStart(3, '0')}`;
         const issue = ["Keyboard keys stuck", "RAM upgrade required", "Blue screen of death", "System running slow", "USB ports broken"][i % 5];
         const status = i <= 12 ? "In Progress" : i <= 16 ? "Awaiting Parts" : i <= 22 ? "Completed" : "Cancelled";
-        
+
         generatedRepairs.push({
           id: `REP${String(i).padStart(5, '0')}`,
           assetId: assetId,
@@ -557,10 +581,14 @@ export const AssetProvider = ({ children }) => {
         ]
       }
     ];
-    parsedRepairs = parsedRepairs.map((r, idx) => ({
-      ...r,
-      acceptedBy: r.acceptedBy || (idx % 2 === 0 ? 'Rakesh Reddy (Admin)' : null)
-    }));
+    parsedRepairs = parsedRepairs.map((r, idx) => {
+      const acceptedBy = r.acceptedBy || (idx % 2 === 0 ? 'Rakesh Reddy (Admin)' : null);
+      return {
+        ...r,
+        acceptedBy,
+        status: acceptedBy ? r.status : 'Pending'
+      };
+    });
     mockRepairs.forEach(mockRep => {
       if (!parsedRepairs.some(r => r.id === mockRep.id)) {
         parsedRepairs.push({
@@ -656,7 +684,7 @@ export const AssetProvider = ({ children }) => {
       localStorage.setItem('it_categories', JSON.stringify(initialCategories));
       storedCategories = JSON.stringify(initialCategories);
     }
-    
+
     let parsedCats = JSON.parse(storedCategories);
     // Ensure default items are merged if not present
     initialCategories.forEach(item => {
@@ -708,18 +736,33 @@ export const AssetProvider = ({ children }) => {
     localStorage.setItem('it_categories', JSON.stringify(data));
   };
 
+  const formatDateTime = (dateInput = new Date()) => {
+    return new Date(dateInput).toLocaleString('en-US', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true 
+    }).replace(',', '');
+  };
+
   // Helper to add activity logs
   const logActivity = (activityName, details, customUser = null) => {
     const operator = customUser || currentUser?.name || "Rakesh Reddy";
-    const newLog = {
-      id: `ACT${String(activity.length + 1).padStart(3, '0')}`,
-      user: operator,
-      activity: activityName,
-      details: details,
-      ipAddress: "192.168.1.10",
-      dateTime: new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
-    };
-    saveActivity([newLog, ...activity]);
+    setActivity(prevActivity => {
+      const newLog = {
+        id: `ACT${String(prevActivity.length + 1).padStart(3, '0')}`,
+        user: operator,
+        activity: activityName,
+        details: details,
+        ipAddress: "192.168.1.10",
+        dateTime: new Date().toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+      };
+      const updated = [newLog, ...prevActivity];
+      localStorage.setItem('it_activity', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // CRUD Operations
@@ -746,6 +789,9 @@ export const AssetProvider = ({ children }) => {
       ownership: asset.ownership || "Quadrant IT Services",
       assignedTo: asset.assignedTo || null,
       status: asset.status || "Available",
+      chargerSerialNumber: asset.chargerSerialNumber || (asset.type === 'Laptop' ? `CHG-SN-${String(85000000 + Math.floor(Math.random() * 1000000)).substring(0, 8)}` : 'N/A'),
+      condition: asset.condition || 'Good',
+      assignedDate: asset.status === 'Assigned' ? new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
       image: asset.image || "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=80&h=80&fit=crop"
     };
     saveAssets([newAsset, ...assets]);
@@ -753,7 +799,21 @@ export const AssetProvider = ({ children }) => {
   };
 
   const updateAsset = (updatedAsset) => {
-    const list = assets.map(item => item.id === updatedAsset.id ? updatedAsset : item);
+    const original = assets.find(item => item.id === updatedAsset.id);
+    const merged = {
+      chargerSerialNumber: original?.chargerSerialNumber || (updatedAsset.type === 'Laptop' ? `CHG-SN-${String(85000000 + Math.floor(Math.random() * 1000000)).substring(0, 8)}` : 'N/A'),
+      condition: original?.condition || 'Good',
+      assignedDate: original?.assignedDate || (updatedAsset.status === 'Assigned' ? new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'),
+      ...updatedAsset
+    };
+    if (original && original.status !== 'Assigned' && updatedAsset.status === 'Assigned') {
+      merged.assignedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    if (updatedAsset.status !== 'Assigned') {
+      merged.assignedDate = 'N/A';
+    }
+
+    const list = assets.map(item => item.id === updatedAsset.id ? merged : item);
     saveAssets(list);
     logActivity("Update Asset", `Updated asset details for ${updatedAsset.id}`);
   };
@@ -823,7 +883,7 @@ export const AssetProvider = ({ children }) => {
     const nowIso = new Date().toISOString();
     const updatedAssets = assets.map(asset => {
       if (assetIds.includes(asset.id)) {
-        const formattedAssignDate = assignDate 
+        const formattedAssignDate = assignDate
           ? new Date(assignDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
           : new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
         return {
@@ -885,14 +945,14 @@ export const AssetProvider = ({ children }) => {
           reportedBy: employeeId,
           issue: `Returned in ${returnCondition} condition. ${remarks || ''}`,
           description: `Asset returned in ${returnCondition} condition by employee. Remarks: ${remarks || 'None'}`,
-          requestDate: returnDate,
+          requestDate: formatDateTime(new Date(returnDate + 'T' + new Date().toTimeString().split(' ')[0])),
           priority: "Medium",
           assignedTo: "IT Support Team",
           estimatedCompletion: "Awaiting inspection",
           status: "In Progress",
           updates: [
             {
-              date: new Date().toLocaleString(),
+              date: formatDateTime(),
               message: `Repair request generated on return by ${emp.name}.`
             }
           ]
@@ -920,11 +980,11 @@ export const AssetProvider = ({ children }) => {
     const newRepair = {
       id: repair.id || `TKT${String(nextNum).padStart(4, '0')}`,
       ...repair,
-      requestDate: new Date().toLocaleDateString(),
+      requestDate: formatDateTime(),
       status: "In Progress",
       updates: [
         {
-          date: new Date().toLocaleString(),
+          date: formatDateTime(),
           message: "Repair request created."
         }
       ]
@@ -950,7 +1010,7 @@ export const AssetProvider = ({ children }) => {
           updates: [
             ...r.updates,
             {
-              date: new Date().toLocaleString(),
+              date: formatDateTime(),
               message: message
             }
           ]
@@ -983,12 +1043,13 @@ export const AssetProvider = ({ children }) => {
         return {
           ...r,
           acceptedBy: adminName,
+          acceptedDate: formatDateTime(),
           assignedTo: adminName,
           status: "In Progress",
           updates: [
             ...(r.updates || []),
             {
-              date: new Date().toLocaleString(),
+              date: formatDateTime(),
               message: `Accepted by ${adminName} and assigned for resolution.`
             }
           ]
@@ -1016,7 +1077,7 @@ export const AssetProvider = ({ children }) => {
           updates: [
             ...(r.updates || []),
             {
-              date: new Date().toLocaleString(),
+              date: formatDateTime(),
               message: `Rejected / Cancelled by ${adminName}.`
             }
           ]
@@ -1034,9 +1095,30 @@ export const AssetProvider = ({ children }) => {
 
   const loginUser = (username, password, role) => {
     const cleanUser = (username || '').trim().toLowerCase();
-    if (role === 'Admin') {
+    
+    // 1. Search for an employee record in the database
+    const emp = employees.find(e => (e.email && e.email.toLowerCase() === cleanUser) || e.username === cleanUser || e.name.toLowerCase() === cleanUser);
+    
+    // 2. Identify if it matches default hardcoded admins (by email or username)
+    const isHardcodedAdmin = (
+      cleanUser === 'teja' || cleanUser === 'teja.adusumilli' || cleanUser === 'teja adusumilli' || cleanUser === 'teja.adusumilli@company.com' ||
+      cleanUser === 'rakesh' || cleanUser === 'rakesh.reddy' || cleanUser === 'rakesh reddy' || cleanUser === 'rakesh.reddy@company.com' ||
+      cleanUser === 'jagadish.prabhakar@quadrantitservices.com' || cleanUser === 'jagadish.prabhakar' || cleanUser === 'jagadish prabhakar'
+    );
+    
+    // 3. Resolve role: if the employee has a customized role set in the database, prioritize that.
+    // Otherwise fallback to hardcoded admin match, or the auto-detected parameter
+    const resolvedRole = (emp && emp.role) ? emp.role : (isHardcodedAdmin ? 'Admin' : role);
+
+    if (resolvedRole === 'Admin') {
       let adminSession = null;
-      if (cleanUser === 'teja' || cleanUser === 'teja.adusumilli' || cleanUser === 'teja adusumilli') {
+      if (emp) {
+        adminSession = {
+          ...emp,
+          role: "Admin",
+          password: password || 'admin123'
+        };
+      } else if (cleanUser === 'teja' || cleanUser === 'teja.adusumilli' || cleanUser === 'teja adusumilli' || cleanUser === 'teja.adusumilli@company.com') {
         adminSession = {
           id: "EMP000",
           name: "Teja Adusumilli",
@@ -1050,7 +1132,7 @@ export const AssetProvider = ({ children }) => {
           location: "Hyderabad, India",
           joiningDate: "15 Jan 2024"
         };
-      } else if (cleanUser === 'rakesh.reddy' || cleanUser === 'rakesh' || cleanUser === 'rakesh reddy') {
+      } else if (cleanUser === 'rakesh.reddy' || cleanUser === 'rakesh' || cleanUser === 'rakesh reddy' || cleanUser === 'rakesh.reddy@company.com') {
         adminSession = {
           id: "EMP001",
           name: "Rakesh Reddy",
@@ -1101,7 +1183,6 @@ export const AssetProvider = ({ children }) => {
       logActivity("Admin Login", `${adminSession.name} logged in as Admin`, adminSession.name);
       return { success: true, user: adminSession };
     } else {
-      const emp = employees.find(e => e.username === cleanUser || e.name.toLowerCase() === cleanUser);
       if (emp) {
         const employeeSession = {
           ...emp,
@@ -1112,7 +1193,7 @@ export const AssetProvider = ({ children }) => {
         localStorage.setItem('it_current_user', JSON.stringify(employeeSession));
         return { success: true, user: employeeSession };
       }
-      return { success: false, message: "Invalid employee username (e.g. rakesh.reddy)." };
+      return { success: false, message: "Invalid employee credentials (please use your email or username)." };
     }
   };
 
@@ -1131,6 +1212,12 @@ export const AssetProvider = ({ children }) => {
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('it_notifications', JSON.stringify(updated));
+  };
+
+  const markAllNotificationsAsRead = () => {
+    const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
     localStorage.setItem('it_notifications', JSON.stringify(updated));
   };
@@ -1157,6 +1244,7 @@ export const AssetProvider = ({ children }) => {
       repairs,
       notifications,
       markNotificationAsRead,
+      markAllNotificationsAsRead,
       activity,
       currentUser,
       loginUser,

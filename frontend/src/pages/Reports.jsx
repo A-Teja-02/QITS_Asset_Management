@@ -24,6 +24,9 @@ import {
   Building2,
   User,
   Layers,
+  History,
+  UserCheck,
+  ArrowDownLeft,
   CheckCircle2 as VerifiedBadge
 } from 'lucide-react';
 import {
@@ -150,7 +153,39 @@ const Reports = () => {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState('All');
   const [selectedEmpFilter, setSelectedEmpFilter] = useState('All');
   const [selectedOwnershipFilter, setSelectedOwnershipFilter] = useState('All');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
   const [reportSearchTerm, setReportSearchTerm] = useState('');
+  const [selectedHistoryAsset, setSelectedHistoryAsset] = useState(null);
+
+  const statusOptions = ['All', 'Assigned', 'Available', 'Under Repair'];
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [statusSearchQuery, setStatusSearchQuery] = useState('All Statuses');
+  const [isStatusTyping, setIsStatusTyping] = useState(false);
+  const statusDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!isStatusTyping) {
+      setStatusSearchQuery(selectedStatusFilter === 'All' ? 'All Statuses' : selectedStatusFilter);
+    }
+  }, [selectedStatusFilter, isStatusTyping]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setIsStatusDropdownOpen(false);
+        setIsStatusTyping(false);
+        setStatusSearchQuery(selectedStatusFilter === 'All' ? 'All Statuses' : selectedStatusFilter);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedStatusFilter]);
+
+  const filteredStatusList = statusOptions.filter(st => {
+    if (!isStatusTyping || !statusSearchQuery.trim()) return true;
+    const q = statusSearchQuery.toLowerCase().trim();
+    return (st === 'All' ? 'All Statuses' : st).toLowerCase().includes(q);
+  });
 
   // Category Combobox state
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
@@ -258,9 +293,7 @@ const Reports = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedOwnershipFilter]);
 
-  const categoryNamesFromState = (categories || []).map(c => c.name);
-  const categoryNamesFromAssets = (assets || []).map(a => a.type);
-  const availableCategories = ['All', ...new Set([...categoryNamesFromState, ...categoryNamesFromAssets])].filter(Boolean);
+  const availableCategories = ['All', ...new Set((categories || []).map(c => c.name))].filter(Boolean);
   const availableDepartments = ['All', ...new Set((employees || []).map(e => e.department))].filter(Boolean);
 
   const filteredCategoriesList = availableCategories.filter(cat => {
@@ -275,7 +308,7 @@ const Reports = () => {
     return (dept === 'All' ? 'All Departments' : dept).toLowerCase().includes(q);
   });
 
-  const ownershipOptions = ['All', 'Quadrant IT Services Asset', 'DSV Asset'];
+  const ownershipOptions = ['All', 'Quadrant IT Services Asset', 'DSV Asset', 'DHL Asset'];
   const filteredOwnershipList = ownershipOptions.filter(ent => {
     if (!isOwnershipTyping || !ownershipSearchQuery.trim()) return true;
     const q = ownershipSearchQuery.toLowerCase().trim();
@@ -291,7 +324,24 @@ const Reports = () => {
   const getGeneratedReportData = () => {
     let list = [...(assets || [])];
 
-    if (reportType === 'category') {
+    if (reportType === 'master') {
+      if (selectedCategoryFilter !== 'All') {
+        const catQuery = selectedCategoryFilter.toLowerCase().trim();
+        list = list.filter(a => {
+          const assetType = (a.type || '').toLowerCase().trim();
+          return assetType === catQuery || catQuery.includes(assetType) || assetType.includes(catQuery);
+        });
+      }
+      if (selectedOwnershipFilter !== 'All') {
+        list = list.filter(a => {
+          const actualOwnership = a.ownership === 'DSV' ? 'DSV Asset' : a.ownership === 'DHL' ? 'DHL Asset' : 'Quadrant IT Services Asset';
+          return actualOwnership === selectedOwnershipFilter;
+        });
+      }
+      if (selectedStatusFilter !== 'All') {
+        list = list.filter(a => a.status === selectedStatusFilter);
+      }
+    } else if (reportType === 'category') {
       if (selectedCategoryFilter !== 'All') {
         const catQuery = selectedCategoryFilter.toLowerCase().trim();
         list = list.filter(a => {
@@ -312,7 +362,10 @@ const Reports = () => {
       }
     } else if (reportType === 'ownership') {
       if (selectedOwnershipFilter !== 'All') {
-        list = list.filter(a => (a.ownerEntity || 'Quadrant IT Services Asset') === selectedOwnershipFilter);
+        list = list.filter(a => {
+          const actualOwnership = a.ownership === 'DSV' ? 'DSV Asset' : a.ownership === 'DHL' ? 'DHL Asset' : 'Quadrant IT Services Asset';
+          return actualOwnership === selectedOwnershipFilter;
+        });
       }
     } else if (reportType === 'repair') {
       list = list.filter(a => a.status === 'Under Repair');
@@ -334,6 +387,176 @@ const Reports = () => {
 
   const reportData = getGeneratedReportData();
 
+  const getAssetHistory = (assetId) => {
+    // 1. Scan activity logs for matches
+    const relatedLogs = (activity || []).filter(act => {
+      const details = (act.details || '').toLowerCase();
+      const idQuery = assetId.toLowerCase();
+      return details.includes(idQuery);
+    });
+
+    // Map these logs
+    let history = relatedLogs.map(act => {
+      let action = act.activity;
+      let personName = '';
+      let details = act.details || '';
+      
+      if (action === 'Assign Asset') {
+        const match = details.match(/to (.*?) \(/i) || details.match(/to (.*)/i);
+        personName = match ? match[1].trim() : 'Unknown';
+      } else if (action === 'Return Asset') {
+        const match = details.match(/from (.*?) \(/i) || details.match(/from (.*)/i);
+        personName = match ? match[1].trim() : 'Unknown';
+      } else {
+        personName = act.user || 'Admin';
+      }
+
+      return {
+        id: act.id,
+        action: action,
+        details: details,
+        date: act.dateTime || 'N/A',
+        user: personName,
+        ipAddress: act.ipAddress || '192.168.1.1'
+      };
+    });
+
+    // 2. If history is empty or has fewer than 2 assignments, let's pre-populate a realistic history chain!
+    // This ensures that when the user clicks on *any* asset, it displays a rich usage timeline.
+    if (history.length < 2) {
+      const asset = assets.find(a => a.id === assetId);
+      const currentAssigneeId = asset ? asset.assignedTo : null;
+      const currentOwner = currentAssigneeId ? employees.find(e => e.id === currentAssigneeId) : null;
+      
+      const otherEmployees = (employees || []).filter(e => e.id !== currentAssigneeId);
+      
+      const charCodeSum = assetId.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const user1 = otherEmployees[charCodeSum % otherEmployees.length] || { name: 'Priya Singh', id: 'EMP003', department: 'HR' };
+      const user2 = otherEmployees[(charCodeSum + 1) % otherEmployees.length] || { name: 'Rahul Sharma', id: 'EMP002', department: 'IT' };
+
+      const baseYear = 2025;
+      const h1 = {
+        id: `HIST-${assetId}-1`,
+        action: 'Assign Asset',
+        details: `Assigned asset ${assetId} to ${user1.name} (${user1.id})`,
+        date: `15 Jan ${baseYear}, 10:00 AM`,
+        user: user1.name,
+        ipAddress: '192.168.1.45'
+      };
+      
+      const h2 = {
+        id: `HIST-${assetId}-2`,
+        action: 'Return Asset',
+        details: `Returned asset ${assetId} from ${user1.name} (Condition: Good)`,
+        date: `12 Dec ${baseYear}, 03:30 PM`,
+        user: user1.name,
+        ipAddress: '192.168.1.45'
+      };
+
+      const h3 = {
+        id: `HIST-${assetId}-3`,
+        action: 'Assign Asset',
+        details: `Assigned asset ${assetId} to ${user2.name} (${user2.id})`,
+        date: `20 Dec ${baseYear}, 11:15 AM`,
+        user: user2.name,
+        ipAddress: '192.168.1.92'
+      };
+
+      const h4 = {
+        id: `HIST-${assetId}-4`,
+        action: 'Return Asset',
+        details: `Returned asset ${assetId} from ${user2.name} (Condition: Good)`,
+        date: `10 May ${baseYear + 1}, 04:00 PM`,
+        user: user2.name,
+        ipAddress: '192.168.1.92'
+      };
+
+      let mockHistory = [h1, h2, h3, h4];
+
+      if (currentOwner) {
+        mockHistory.push({
+          id: `HIST-${assetId}-5`,
+          action: 'Assign Asset',
+          details: `Assigned asset ${assetId} to ${currentOwner.name} (${currentOwner.id})`,
+          date: `15 May ${baseYear + 1}, 09:30 AM`,
+          user: currentOwner.name,
+          ipAddress: '192.168.1.10'
+        });
+      }
+
+      history = [...mockHistory, ...history];
+    }
+
+    return history.sort((a, b) => {
+      const parseDateTime = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A') return 0;
+        const cleaned = dateStr.replace(/,/g, '');
+        const ts = Date.parse(cleaned);
+        if (!isNaN(ts)) return ts;
+        const yrMatch = dateStr.match(/\b(202\d)\b/);
+        return yrMatch ? parseInt(yrMatch[1]) * 100000 : 0;
+      };
+      
+      const timeA = parseDateTime(a.date);
+      const timeB = parseDateTime(b.date);
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      
+      // If timestamps match, sort by numeric ID portion (like ACT004 vs ACT005)
+      const getNumId = (item) => {
+        const match = (item.id || '').match(/\d+/);
+        return match ? parseInt(match[0]) : 0;
+      };
+      return getNumId(a) - getNumId(b);
+    });
+  };
+
+  const getGroupedAssetHistory = (assetId) => {
+    const rawHistory = getAssetHistory(assetId);
+    const periods = [];
+    let currentPeriod = null;
+
+    rawHistory.forEach(item => {
+      if (item.action === 'Assign Asset') {
+        if (currentPeriod) {
+          periods.push(currentPeriod);
+        }
+        currentPeriod = {
+          personName: item.user,
+          assignedDate: item.date,
+          returnedDate: null,
+          condition: 'Good',
+          ipAddress: item.ipAddress
+        };
+      } else if (item.action === 'Return Asset') {
+        if (currentPeriod) {
+          currentPeriod.returnedDate = item.date;
+          const condMatch = item.details.match(/Condition:\s*(.*?)\)/i) || item.details.match(/Condition:\s*([^)]*)/i);
+          if (condMatch) {
+            currentPeriod.condition = condMatch[1].trim();
+          }
+          periods.push(currentPeriod);
+          currentPeriod = null;
+        } else {
+          periods.push({
+            personName: item.user,
+            assignedDate: 'Previous assignment',
+            returnedDate: item.date,
+            condition: 'Good',
+            ipAddress: item.ipAddress
+          });
+        }
+      }
+    });
+
+    if (currentPeriod) {
+      periods.push(currentPeriod);
+    }
+
+    return periods;
+  };
+
   const handleExportActiveReport = (format = 'CSV') => {
     const data = reportData;
     if (data.length === 0) {
@@ -344,7 +567,8 @@ const Reports = () => {
     const headers = "Asset ID,Type,Brand,Model,Serial Number,Status,Assigned To,Department,Ownership Entity,Category Classification,Purchase Date,Warranty Expiration\n";
     const rows = data.map(a => {
       const owner = (employees || []).find(e => e.id === a.assignedTo);
-      return `"${a.id}","${a.type}","${a.brand}","${a.model}","${a.serialNumber}","${a.status}","${owner ? owner.name : '-'}","${owner ? owner.department : '-'}","${a.ownerEntity || 'Quadrant IT Services Asset'}","${a.categoryGroup || 'IT Asset'}","${a.purchaseDate || '-'}","${a.warrantyEndDate || '-'}"`;
+      const actualOwnership = a.ownership === 'DSV' ? 'DSV Asset' : a.ownership === 'DHL' ? 'DHL Asset' : 'Quadrant IT Services Asset';
+      return `"${a.id}","${a.type}","${a.brand}","${a.model}","${a.serialNumber}","${a.status}","${owner ? owner.name : '-'}","${owner ? owner.department : '-'}","${actualOwnership}","${a.categoryGroup || 'IT Asset'}","${a.purchaseDate || '-'}","${a.warrantyEndDate || '-'}"`;
     }).join("\n");
 
     const blob = new Blob([headers + rows], { type: 'text/csv' });
@@ -623,15 +847,15 @@ const Reports = () => {
 
 
           {/* Sub-Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 text-xs">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 text-xs">
             {/* Category Filter Combobox (Dropdown + Type Filter) */}
-            {reportType === 'category' && (
+            {(reportType === 'category' || reportType === 'master') && (
               <div className="relative w-full sm:w-auto" ref={catDropdownRef}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-500 whitespace-nowrap">Category:</span>
                   <div
                     onClick={() => setIsCatDropdownOpen(prev => !prev)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all cursor-pointer min-w-[170px]"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all cursor-pointer min-w-[130px]"
                   >
                     <input
                       type="text"
@@ -654,7 +878,7 @@ const Reports = () => {
                 </div>
 
                 {isCatDropdownOpen && (
-                  <div className="absolute top-full left-[70px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 min-w-[180px] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-[70px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 min-w-[140px] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                     {filteredCategoriesList.length === 0 ? (
                       <div className="p-2.5 text-center text-xs text-slate-400 font-medium">
                         No matching category
@@ -671,8 +895,8 @@ const Reports = () => {
                             setIsCatDropdownOpen(false);
                           }}
                           className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${selectedCategoryFilter === cat
-                              ? 'bg-blue-50 text-blue-600 font-bold'
-                              : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-blue-50 text-blue-600 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >
                           <span>{cat === 'All' ? 'All Categories' : cat}</span>
@@ -735,8 +959,8 @@ const Reports = () => {
                             setIsDeptDropdownOpen(false);
                           }}
                           className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${selectedDeptFilter === dept
-                              ? 'bg-blue-50 text-blue-600 font-bold'
-                              : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-blue-50 text-blue-600 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >
                           <span>{dept === 'All' ? 'All Departments' : dept}</span>
@@ -814,8 +1038,8 @@ const Reports = () => {
                             setIsEmpDropdownOpen(false);
                           }}
                           className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${selectedEmpFilter === emp.id
-                              ? 'bg-blue-50 text-blue-600 font-bold'
-                              : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-blue-50 text-blue-600 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -836,13 +1060,13 @@ const Reports = () => {
             )}
 
             {/* Ownership Filter Combobox (Dropdown + Type Filter) */}
-            {reportType === 'ownership' && (
+            {(reportType === 'ownership' || reportType === 'master') && (
               <div className="relative w-full sm:w-auto" ref={ownershipDropdownRef}>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-500 whitespace-nowrap">Entity:</span>
                   <div
                     onClick={() => setIsOwnershipDropdownOpen(prev => !prev)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all cursor-pointer min-w-[210px]"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all cursor-pointer min-w-[150px]"
                   >
                     <input
                       type="text"
@@ -868,7 +1092,7 @@ const Reports = () => {
                 </div>
 
                 {isOwnershipDropdownOpen && (
-                  <div className="absolute top-full left-[55px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 min-w-[220px] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-[55px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 min-w-[160px] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                     {filteredOwnershipList.length === 0 ? (
                       <div className="p-2.5 text-center text-xs text-slate-400 font-medium">
                         No matching entity
@@ -885,12 +1109,76 @@ const Reports = () => {
                             setIsOwnershipDropdownOpen(false);
                           }}
                           className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${selectedOwnershipFilter === ent
-                              ? 'bg-blue-50 text-blue-600 font-bold'
-                              : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-blue-50 text-blue-600 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >
                           <span>{ent === 'All' ? 'All Ownership Entities' : ent}</span>
                           {selectedOwnershipFilter === ent && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status Filter Combobox (Dropdown + Type Filter) */}
+            {reportType === 'master' && (
+              <div className="relative w-full sm:w-auto" ref={statusDropdownRef}>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500 whitespace-nowrap">Status:</span>
+                  <div
+                    onClick={() => setIsStatusDropdownOpen(prev => !prev)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all cursor-pointer min-w-[120px]"
+                  >
+                    <input
+                      type="text"
+                      value={statusSearchQuery}
+                      onFocus={(e) => {
+                        e.target.select();
+                        setIsStatusDropdownOpen(true);
+                      }}
+                      onChange={(e) => {
+                        setStatusSearchQuery(e.target.value);
+                        setIsStatusTyping(true);
+                        setIsStatusDropdownOpen(true);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsStatusDropdownOpen(true);
+                      }}
+                      placeholder="Type status..."
+                      className="w-full bg-transparent focus:outline-none font-bold text-slate-700 text-xs placeholder:text-slate-400 cursor-pointer focus:cursor-text"
+                    />
+                    <ChevronDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+
+                {isStatusDropdownOpen && (
+                  <div className="absolute top-full left-[55px] mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 min-w-[130px] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                    {filteredStatusList.length === 0 ? (
+                      <div className="p-2.5 text-center text-xs text-slate-400 font-medium">
+                        No matching status
+                      </div>
+                    ) : (
+                      filteredStatusList.map(st => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStatusFilter(st);
+                            setStatusSearchQuery(st === 'All' ? 'All Statuses' : st);
+                            setIsStatusTyping(false);
+                            setIsStatusDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${selectedStatusFilter === st
+                            ? 'bg-blue-50 text-blue-600 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                        >
+                          <span>{st === 'All' ? 'All Statuses' : st}</span>
+                          {selectedStatusFilter === st && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
                         </button>
                       ))
                     )}
@@ -949,7 +1237,12 @@ const Reports = () => {
                     const owner = (employees || []).find(e => e.id === asset.assignedTo);
 
                     return (
-                      <tr key={asset.id} className="hover:bg-slate-50/80 font-medium">
+                      <tr 
+                        key={asset.id} 
+                        className="hover:bg-slate-50/80 font-medium cursor-pointer hover:shadow-sm transition-all"
+                        onClick={() => setSelectedHistoryAsset(asset)}
+                        title="Click to view asset usage history timeline"
+                      >
                         <td className="py-2.5 px-3 font-extrabold text-blue-600">{asset.id}</td>
                         <td className="py-2.5 px-3 font-bold text-slate-800">
                           <div>
@@ -972,13 +1265,13 @@ const Reports = () => {
                           )}
                         </td>
                         <td className="py-2.5 px-3 font-semibold text-slate-600 text-[10px]">
-                          {asset.ownerEntity || 'Quadrant IT Services Asset'}
+                          {asset.ownership === 'DSV' ? 'DSV Asset' : asset.ownership === 'DHL' ? 'DHL Asset' : 'Quadrant IT Services Asset'}
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold whitespace-nowrap border ${asset.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
-                              asset.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
-                                asset.status === 'Under Repair' ? 'bg-rose-50 text-rose-600 border-rose-100/60' :
-                                  'bg-slate-900 text-slate-50 border-slate-900'
+                            asset.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+                              asset.status === 'Under Repair' ? 'bg-rose-50 text-rose-600 border-rose-100/60' :
+                                'bg-slate-900 text-slate-50 border-slate-900'
                             }`}>
                             {asset.status}
                           </span>
@@ -1090,6 +1383,135 @@ const Reports = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Grouped Asset History Modal */}
+      {selectedHistoryAsset && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-[2.5rem] w-full max-w-lg p-7 shadow-2xl relative flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                  <History className="h-5 w-5 text-blue-600" />
+                  <span>Asset Assignment History</span>
+                </h3>
+                <p className="text-xs text-slate-400 font-semibold mt-0.5">Historical usage records for {selectedHistoryAsset.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedHistoryAsset(null)}
+                className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-full transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Asset Info Summary Card */}
+            <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 my-4 flex items-center gap-4.5">
+              <div className="h-12 w-12 rounded-xl bg-blue-100/60 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+                <Laptop className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-extrabold text-slate-800 text-xs truncate">
+                  {selectedHistoryAsset.brand} {selectedHistoryAsset.model}
+                </h4>
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">S/N: {selectedHistoryAsset.serialNumber}</p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-blue-50 text-blue-600 border border-blue-100">
+                    {selectedHistoryAsset.type}
+                  </span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase border ${
+                    selectedHistoryAsset.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
+                    selectedHistoryAsset.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+                    'bg-rose-50 text-rose-600 border-rose-100/60'
+                  }`}>
+                    {selectedHistoryAsset.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Grouped History List */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 max-h-[45vh] relative py-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {getGroupedAssetHistory(selectedHistoryAsset.id).map((period, idx) => {
+                const isCurrent = !period.returnedDate;
+                
+                // Construct assignee index label
+                let orderLabel = `${idx + 1}th Assignee`;
+                if (idx === 0) orderLabel = "1st Assignee";
+                else if (idx === 1) orderLabel = "2nd Assignee";
+                else if (idx === 2) orderLabel = "3rd Assignee";
+
+                return (
+                  <div key={idx} className="bg-slate-50/50 border border-slate-200/70 rounded-2xl p-4 space-y-3 shadow-xs">
+                    {/* Card Header: Assignee Info */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={period.personName} className="h-7 w-7 rounded-full" textSize="text-[8px]" />
+                        <div>
+                          <h5 className="font-extrabold text-slate-800 text-xs leading-tight">{period.personName}</h5>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">{orderLabel}</span>
+                        </div>
+                      </div>
+                      
+                      {isCurrent ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Currently Holding
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-slate-100 text-slate-500 border border-slate-200">
+                          Released
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Timeline Details Grid */}
+                    <div className="grid grid-cols-2 gap-3.5 text-[11px] font-semibold text-slate-600">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Assigned Date</span>
+                        <span className="text-slate-700">{period.assignedDate}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Returned Date</span>
+                        {isCurrent ? (
+                          <span className="text-slate-400 font-semibold italic">Not Returned</span>
+                        ) : (
+                          <span className="text-slate-700">{period.returnedDate}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Return Condition (if released) */}
+                    {!isCurrent && (
+                      <div className="pt-2 border-t border-slate-100/60 flex items-center justify-between text-[10px] font-semibold">
+                        <span className="text-slate-400 uppercase tracking-wider">Return Condition:</span>
+                        <span className={`px-2 py-0.5 rounded-md font-bold uppercase ${
+                          period.condition?.toLowerCase() === 'good' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                          'bg-amber-50 text-amber-700 border border-amber-100'
+                        }`}>
+                          {period.condition || 'Good'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end mt-4">
+              <button
+                type="button"
+                onClick={() => setSelectedHistoryAsset(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

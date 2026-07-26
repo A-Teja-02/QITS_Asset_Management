@@ -713,39 +713,100 @@ const Dashboard = () => {
             <h3 className="font-extrabold text-slate-800 text-lg mt-4">{selectedAsset?.brand} {selectedAsset?.model}</h3>
             <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold mt-1 tracking-wide uppercase">{selectedAsset?.type}</span>
 
-            <div className="w-full mt-6 space-y-3 text-xs">
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Asset ID</span>
-                <span className="font-extrabold text-slate-800">{selectedAsset?.id}</span>
+            <div className="w-full mt-6 grid grid-cols-2 gap-x-5 gap-y-3 text-[11px] text-slate-700 overflow-y-auto max-h-[45vh] pr-1">
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset ID</span>
+                <span className="font-extrabold text-slate-800 mt-0.5">{selectedAsset?.id}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Serial Number</span>
-                <span className="font-mono font-bold text-slate-800">{selectedAsset?.serialNumber}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset Type</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.type}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Status</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${selectedAsset?.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
-                  selectedAsset?.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset Name</span>
+                <span className="font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.model}>{selectedAsset?.model}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Brand</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.brand}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Serial Number</span>
+                <span className="font-mono font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.serialNumber}>{selectedAsset?.serialNumber}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Charger Serial</span>
+                <span className="font-mono font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.chargerSerialNumber}>{selectedAsset?.chargerSerialNumber || 'N/A'}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Status</span>
+                <span className="mt-0.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                    selectedAsset?.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
+                    selectedAsset?.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
                     selectedAsset?.status === 'Under Repair' ? 'bg-rose-50 text-rose-600 border-rose-100/60' :
-                      'bg-slate-900 text-slate-50 border border-slate-900'
+                    'bg-slate-900 text-slate-50 border-slate-900'
                   }`}>{selectedAsset?.status}</span>
+                </span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Assigned To</span>
-                <span className="font-bold text-slate-800">
-                  {selectedAsset?.assignedTo
-                    ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name} (${selectedAsset.assignedTo})`
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Assigned To</span>
+                <span className="font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.assignedTo ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name} (${selectedAsset.assignedTo})` : 'None'}>
+                  {selectedAsset?.assignedTo 
+                    ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name}`
                     : 'None'
                   }
                 </span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Purchase Date</span>
-                <span className="font-bold text-slate-800">{selectedAsset?.purchaseDate}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Condition</span>
+                <span className="mt-0.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                    (selectedAsset?.condition || 'Good') === 'Good' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+                    (selectedAsset?.condition || 'Good') === 'Working' ? 'bg-blue-50 text-blue-600 border-blue-100/60' :
+                    'bg-rose-50 text-rose-600 border-rose-100/60'
+                  }`}>{selectedAsset?.condition || 'Good'}</span>
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-slate-400">Warranty Expiration</span>
-                <span className="font-bold text-slate-800 text-red-500">{selectedAsset?.warrantyEndDate}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Purchase Date</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.purchaseDate}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Warranty Status</span>
+                <span className="mt-0.5">
+                  {(() => {
+                    if (!selectedAsset || !selectedAsset.warrantyEndDate || selectedAsset.warrantyEndDate === 'N/A') {
+                      return <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border bg-slate-100 text-slate-500 border-slate-200">N/A</span>;
+                    }
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const parts = selectedAsset.warrantyEndDate.split(' ');
+                    let warrantyDate = null;
+                    if (parts.length === 3) {
+                      const day = parseInt(parts[0]);
+                      const monthIdx = months.indexOf(parts[1]);
+                      const year = parseInt(parts[2]);
+                      if (monthIdx !== -1 && !isNaN(day) && !isNaN(year)) {
+                        warrantyDate = new Date(year, monthIdx, day);
+                      }
+                    } else {
+                      const parsed = new Date(selectedAsset.warrantyEndDate);
+                      if (!isNaN(parsed.getTime())) {
+                        warrantyDate = parsed;
+                      }
+                    }
+                    const isWarrantyActive = warrantyDate ? warrantyDate > new Date() : true;
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                        isWarrantyActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' : 'bg-rose-50 text-rose-600 border-rose-100/60'
+                      }`}>{isWarrantyActive ? 'Active' : 'Expired'}</span>
+                    );
+                  })()}
+                </span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Assigned Date</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.assignedDate || 'N/A'}</span>
               </div>
             </div>
 

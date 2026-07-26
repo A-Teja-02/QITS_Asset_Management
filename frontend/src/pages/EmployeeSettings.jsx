@@ -143,14 +143,6 @@ const EmployeeSettings = () => {
                 className="h-32 w-32 rounded-full border-4 border-slate-50 shadow-md animate-fade-in" 
                 textSize="text-3xl" 
               />
-              <button 
-                type="button"
-                onClick={() => showToast("Upload new profile photo simulation launched.", "info")}
-                className="absolute bottom-0 right-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full border-2 border-white shadow-md transition-all cursor-pointer"
-                title="Change Photo"
-              >
-                <Camera className="h-4 w-4" />
-              </button>
             </div>
 
             <div>

@@ -50,9 +50,11 @@ const Login = () => {
       cleanUser === 'teja' ||
       cleanUser === 'teja.adusumilli' ||
       cleanUser === 'teja adusumilli' ||
+      cleanUser === 'teja.adusumilli@company.com' ||
       cleanUser === 'rakesh' ||
       cleanUser === 'rakesh.reddy' ||
       cleanUser === 'rakesh reddy' ||
+      cleanUser === 'rakesh.reddy@company.com' ||
       cleanUser === 'jagadish.prabhakar@quadrantitservices.com' ||
       cleanUser === 'jagadish.prabhakar' ||
       cleanUser === 'jagadish prabhakar'
@@ -106,10 +108,7 @@ const Login = () => {
       {/* Light overlay to keep background bright but readable */}
       <div className="absolute inset-0 bg-white/10 z-0 pointer-events-none" />
 
-      {/* Light transparent watermark centered in background */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.045] z-0 select-none flex items-center justify-center">
-        <img src={logoImg} alt="Watermark Background Logo" className="w-[500px] h-[500px] md:w-[700px] md:h-[700px] object-contain" />
-      </div>
+
 
       {/* Main card — white frosted glass to match bright background */}
       <div className="w-full max-w-md backdrop-blur-xl bg-white/80 border border-white/60 rounded-[2.5rem] p-8 shadow-2xl shadow-slate-300/40 space-y-6 relative z-10 animate-fade-in">
@@ -136,7 +135,7 @@ const Login = () => {
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1">Username</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1">Email Address</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3.5 text-slate-400 flex items-center pointer-events-none">
                 <User className="h-4 w-4" />

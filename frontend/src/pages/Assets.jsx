@@ -18,7 +18,8 @@ import {
   Upload,
   FileSpreadsheet,
   X,
-  TrendingUp
+  TrendingUp,
+  Calendar
 } from 'lucide-react';
 import { useAssetManager } from '../hooks/useAssetManager';
 import MetricCard from '../components/MetricCard';
@@ -44,6 +45,8 @@ const Assets = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const [scopeFilter, setScopeFilter] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [showScopeGlass, setShowScopeGlass] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
@@ -98,6 +101,7 @@ const Assets = () => {
   const [selectedAsset, setSelectedAsset] = useState(null);
 
   // Form states
+  const [formId, setFormId] = useState('');
   const [formType, setFormType] = useState('Laptop');
   const [customType, setCustomType] = useState('');
   const [formBrand, setFormBrand] = useState('Dell');
@@ -108,6 +112,45 @@ const Assets = () => {
   const [formAssigned, setFormAssigned] = useState('');
   const [formOwnership, setFormOwnership] = useState('Quadrant IT Services');
   const [formGroup, setFormGroup] = useState('IT');
+  const [formChargerSerial, setFormChargerSerial] = useState('');
+  const [formCondition, setFormCondition] = useState('Good');
+  const [formPurchaseDate, setFormPurchaseDate] = useState('');
+  const [formAssignedDate, setFormAssignedDate] = useState('');
+
+  const formatDateToShort = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  const formatDateToInput = (dateStr) => {
+    if (!dateStr || dateStr === 'N/A') return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const parts = dateStr.split(' ');
+    if (parts.length === 3) {
+      const day = String(parts[0]).padStart(2, '0');
+      const monthIdx = months.indexOf(parts[1]);
+      const year = parts[2];
+      if (monthIdx !== -1) {
+        const month = String(monthIdx + 1).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+    }
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return '';
+  };
 
   useEffect(() => {
     if (formType === 'Other') return;
@@ -147,8 +190,34 @@ const Assets = () => {
       : scopeFilter === 'Assigned' 
         ? asset.status === 'Assigned' 
         : asset.status !== 'Assigned';
+        
+    let matchesDate = true;
+    if (filterStartDate || filterEndDate) {
+      if (!asset.assignedDate || asset.assignedDate === 'N/A' || asset.status !== 'Assigned') {
+        matchesDate = false;
+      } else {
+        try {
+          const inputDateStr = formatDateToInput(asset.assignedDate);
+          if (inputDateStr) {
+            const assignDateObj = new Date(inputDateStr);
+            if (filterStartDate) {
+              const start = new Date(filterStartDate);
+              if (assignDateObj < start) matchesDate = false;
+            }
+            if (filterEndDate) {
+              const end = new Date(filterEndDate);
+              if (assignDateObj > end) matchesDate = false;
+            }
+          } else {
+            matchesDate = false;
+          }
+        } catch (e) {
+          matchesDate = false;
+        }
+      }
+    }
     
-    return matchesSearch && matchesType && matchesScope;
+    return matchesSearch && matchesType && matchesScope && matchesDate;
   });
 
   // Multi-select helpers
@@ -238,10 +307,10 @@ const Assets = () => {
 
   // CSV Exporter
   const handleExport = () => {
-    const headers = "Asset ID,Asset Type,Brand,Model,Serial Number,Status,Assigned To,Purchase Date,Warranty End Date\n";
+    const headers = "Asset ID,Asset Type,Brand,Model,Serial Number,Charger Serial Number,Condition,Status,Assigned To,Assigned Date,Purchase Date,Warranty End Date\n";
     const rows = filteredAssets.map(a => {
       const owner = employees.find(e => e.id === a.assignedTo);
-      return `"${a.id}","${a.type}","${a.brand}","${a.model}","${a.serialNumber}","${a.status}","${owner ? owner.name : '-'}","${a.purchaseDate}","${a.warrantyEndDate}"`;
+      return `"${a.id}","${a.type}","${a.brand}","${a.model}","${a.serialNumber}","${a.chargerSerialNumber || 'N/A'}","${a.condition || 'Good'}","${a.status}","${owner ? owner.name : '-'}","${a.assignedDate || 'N/A'}","${a.purchaseDate}","${a.warrantyEndDate}"`;
     }).join("\n");
     
     const blob = new Blob([headers + rows], { type: 'text/csv' });
@@ -254,8 +323,26 @@ const Assets = () => {
     document.body.removeChild(link);
   };
 
+  const generateSuggestedId = (ownershipVal) => {
+    const owner = (ownershipVal || '').trim().toLowerCase();
+    let prefix = 'QITS';
+    if (owner.includes('dsv')) {
+      prefix = 'DSV';
+    } else if (owner.includes('dhl')) {
+      prefix = 'DHL';
+    }
+    let nextNum = assets.filter(a => a.id && a.id.toUpperCase().startsWith(prefix.toUpperCase())).length + 1;
+    let newId = `${prefix}${String(nextNum).padStart(4, '0')}`;
+    while (assets.some(a => a.id === newId)) {
+      nextNum += 1;
+      newId = `${prefix}${String(nextNum).padStart(4, '0')}`;
+    }
+    return newId;
+  };
+
   // Form submit handlers
   const handleOpenAddModal = () => {
+    setFormId(generateSuggestedId('Quadrant IT Services'));
     setFormType('Laptop');
     setCustomType('');
     setFormBrand('Dell');
@@ -266,6 +353,10 @@ const Assets = () => {
     setFormAssigned('');
     setFormOwnership('Quadrant IT Services');
     setFormGroup('IT');
+    setFormChargerSerial('');
+    setFormCondition('Good');
+    setFormPurchaseDate(new Date().toISOString().substring(0, 10));
+    setFormAssignedDate('');
     setActiveDropdown(null);
     setIsAddModalOpen(true);
   };
@@ -274,7 +365,15 @@ const Assets = () => {
     e.preventDefault();
     const finalType = formType === 'Other' ? (customType.trim() || 'Other') : formType;
     const finalBrand = formBrand === 'Other' ? (customBrand.trim() || 'Other') : formBrand;
+    
+    const pDate = formPurchaseDate ? new Date(formPurchaseDate) : new Date();
+    const pDateFormatted = formatDateToShort(formPurchaseDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const wDate = new Date(pDate);
+    wDate.setFullYear(pDate.getFullYear() + 3);
+    const wDateFormatted = wDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
     addAsset({
+      id: formId.trim(),
       type: finalType,
       brand: finalBrand,
       model: formModel,
@@ -282,9 +381,14 @@ const Assets = () => {
       status: formStatus,
       ownership: formOwnership,
       group: formGroup,
+      chargerSerialNumber: formChargerSerial || 'N/A',
+      condition: formCondition,
       assignedTo: formStatus === 'Assigned' && formAssigned ? formAssigned : null,
-      purchaseDate: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
-      warrantyEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 3)).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+      purchaseDate: pDateFormatted,
+      warrantyEndDate: wDateFormatted,
+      assignedDate: formStatus === 'Assigned' 
+        ? (formAssignedDate ? formatDateToShort(formAssignedDate) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }))
+        : 'N/A'
     });
     setIsAddModalOpen(false);
     showToast('Asset added successfully');
@@ -309,6 +413,10 @@ const Assets = () => {
     setFormAssigned(asset.assignedTo || '');
     setFormOwnership(asset.ownership || 'Quadrant IT Services');
     setFormGroup(asset.group || 'IT');
+    setFormChargerSerial(asset.chargerSerialNumber || '');
+    setFormCondition(asset.condition || 'Good');
+    setFormPurchaseDate(formatDateToInput(asset.purchaseDate));
+    setFormAssignedDate(formatDateToInput(asset.assignedDate));
     setActiveDropdown(null);
     setIsEditModalOpen(true);
   };
@@ -317,6 +425,13 @@ const Assets = () => {
     e.preventDefault();
     const finalType = formType === 'Other' ? (customType.trim() || 'Other') : formType;
     const finalBrand = formBrand === 'Other' ? (customBrand.trim() || 'Other') : formBrand;
+    
+    const pDate = formPurchaseDate ? new Date(formPurchaseDate) : new Date();
+    const pDateFormatted = formatDateToShort(formPurchaseDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const wDate = new Date(pDate);
+    wDate.setFullYear(pDate.getFullYear() + 3);
+    const wDateFormatted = wDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
     updateAsset({
       ...selectedAsset,
       type: finalType,
@@ -326,7 +441,14 @@ const Assets = () => {
       status: formStatus,
       ownership: formOwnership,
       group: formGroup,
-      assignedTo: formStatus === 'Assigned' && formAssigned ? formAssigned : null
+      chargerSerialNumber: formChargerSerial || 'N/A',
+      condition: formCondition,
+      purchaseDate: pDateFormatted,
+      warrantyEndDate: wDateFormatted,
+      assignedTo: formStatus === 'Assigned' && formAssigned ? formAssigned : null,
+      assignedDate: formStatus === 'Assigned' 
+        ? (formAssignedDate ? formatDateToShort(formAssignedDate) : (selectedAsset.assignedDate && selectedAsset.assignedDate !== 'N/A' ? selectedAsset.assignedDate : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })))
+        : 'N/A'
     });
     setIsEditModalOpen(false);
     showToast('Asset updated successfully');
@@ -377,17 +499,14 @@ const Assets = () => {
       {/* Assets inventory panel */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
         {/* Controls Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold text-slate-800">
               {scopeFilter === 'Assigned' ? 'Assigned Assets' : scopeFilter === 'Not Assigned' ? 'Not Assigned Assets' : 'All Assets Inventory'}
             </h3>
-            <span className="text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full border border-blue-100 whitespace-nowrap shrink-0 inline-flex items-center">
-              {filteredAssets.length} Total
-            </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
             {/* Search */}
             <div className="relative flex-1 sm:w-56 min-w-[140px]">
               <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
@@ -471,6 +590,42 @@ const Assets = () => {
                 </div>
               )}
             </div>
+
+            {/* Date Range Filters (From/To) */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                placeholder="From Date"
+                title="Filter by assignment start date"
+                className="bg-transparent border-0 outline-none text-xs text-slate-600 focus:ring-0 p-0 cursor-pointer w-24"
+              />
+            </div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">to</span>
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                placeholder="To Date"
+                title="Filter by assignment end date"
+                className="bg-transparent border-0 outline-none text-xs text-slate-600 focus:ring-0 p-0 cursor-pointer w-24"
+              />
+            </div>
+            {(filterStartDate || filterEndDate) && (
+              <button
+                onClick={() => {
+                  setFilterStartDate('');
+                  setFilterEndDate('');
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
 
             {/* Import Excel Trigger */}
             <div className="relative group">
@@ -723,7 +878,56 @@ const Assets = () => {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form ref={formDropdownRef} onSubmit={handleAddSubmit} className="space-y-4">
+            <form ref={formDropdownRef} onSubmit={handleAddSubmit} className="space-y-4 animate-fade-in">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Ownership Dropdown */}
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Asset Ownership *</label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDropdown(activeDropdown === 'ownership' ? null : 'ownership')}
+                    className="w-full flex items-center justify-between p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-left transition-all"
+                  >
+                    <span>{formOwnership}</span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${activeDropdown === 'ownership' ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {activeDropdown === 'ownership' && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-30 text-xs font-semibold text-slate-700">
+                      {["Quadrant IT Services", "DSV", "DHL"].map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setFormOwnership(opt);
+                            setFormId(generateSuggestedId(opt));
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                            formOwnership === opt ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {formOwnership === opt && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Asset ID Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Asset ID *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formId} 
+                    onChange={e => setFormId(e.target.value)} 
+                    placeholder="e.g. QITS0266"
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {/* Asset Type Dropdown */}
                 <div className="relative">
@@ -838,39 +1042,6 @@ const Assets = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {/* Ownership Dropdown */}
-                <div className="relative">
-                  <label className="block text-xs font-bold text-slate-500 mb-1">Asset Ownership *</label>
-                  <button
-                    type="button"
-                    onClick={() => setActiveDropdown(activeDropdown === 'ownership' ? null : 'ownership')}
-                    className="w-full flex items-center justify-between p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-left transition-all"
-                  >
-                    <span>{formOwnership}</span>
-                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${activeDropdown === 'ownership' ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {activeDropdown === 'ownership' && (
-                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-30 text-xs font-semibold text-slate-700">
-                      {["Quadrant IT Services", "DSV", "DHL"].map(opt => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => {
-                            setFormOwnership(opt);
-                            setActiveDropdown(null);
-                          }}
-                          className={`w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                            formOwnership === opt ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
-                          }`}
-                        >
-                          <span>{opt}</span>
-                          {formOwnership === opt && <Check className="h-3.5 w-3.5 text-blue-600" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 {/* Asset Class Dropdown */}
                 <div className="relative">
                   <label className="block text-xs font-bold text-slate-500 mb-1">Asset Class *</label>
@@ -908,6 +1079,73 @@ const Assets = () => {
                   )}
                 </div>
               </div>
+              {/* Charger Serial (if Laptop) */}
+              {formType === 'Laptop' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Charger Serial Number *</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={formChargerSerial} 
+                      onChange={e => setFormChargerSerial(e.target.value)} 
+                      placeholder="e.g. CHG12345"
+                      className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Condition & Purchase Date */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Condition Dropdown */}
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Asset Condition *</label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDropdown(activeDropdown === 'condition' ? null : 'condition')}
+                    className="w-full flex items-center justify-between p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-left transition-all"
+                  >
+                    <span>{formCondition}</span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${activeDropdown === 'condition' ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {activeDropdown === 'condition' && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-30 text-xs font-semibold text-slate-700">
+                      {["Good", "Working", "Poor"].map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setFormCondition(opt);
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                            formCondition === opt ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {formCondition === opt && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Purchase Date Picker */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Purchase Date *</label>
+                  <input 
+                    type="date" 
+                    required 
+                    value={formPurchaseDate} 
+                    onChange={e => setFormPurchaseDate(e.target.value)} 
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Status Section */}
               <div className="grid grid-cols-2 gap-4">
                 {/* Initial Status Dropdown */}
                 <div className="relative">
@@ -942,8 +1180,12 @@ const Assets = () => {
                     </div>
                   )}
                 </div>
-                {/* Assign to Employee Dropdown */}
-                {formStatus === 'Assigned' && (
+              </div>
+
+              {/* Assign To Employee & Date Section */}
+              {formStatus === 'Assigned' && (
+                <div className="grid grid-cols-2 gap-4 animate-scale-in">
+                  {/* Assign to Employee Dropdown */}
                   <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 mb-1">Assign To Employee *</label>
                     <button
@@ -980,8 +1222,19 @@ const Assets = () => {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+
+                  {/* Assigned Date Picker */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Assigned Date</label>
+                    <input 
+                      type="date" 
+                      value={formAssignedDate} 
+                      onChange={e => setFormAssignedDate(e.target.value)} 
+                      className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200">
                   Cancel
@@ -1189,6 +1442,73 @@ const Assets = () => {
                   )}
                 </div>
               </div>
+              {/* Charger Serial (if Laptop) */}
+              {formType === 'Laptop' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Charger Serial Number *</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={formChargerSerial} 
+                      onChange={e => setFormChargerSerial(e.target.value)} 
+                      placeholder="e.g. CHG12345"
+                      className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Condition & Purchase Date */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Condition Dropdown */}
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Asset Condition *</label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDropdown(activeDropdown === 'condition' ? null : 'condition')}
+                    className="w-full flex items-center justify-between p-2 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-left transition-all"
+                  >
+                    <span>{formCondition}</span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${activeDropdown === 'condition' ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {activeDropdown === 'condition' && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-30 text-xs font-semibold text-slate-700">
+                      {["Good", "Working", "Poor"].map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setFormCondition(opt);
+                            setActiveDropdown(null);
+                          }}
+                          className={`w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                            formCondition === opt ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
+                          }`}
+                        >
+                          <span>{opt}</span>
+                          {formCondition === opt && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Purchase Date Picker */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Purchase Date *</label>
+                  <input 
+                    type="date" 
+                    required 
+                    value={formPurchaseDate} 
+                    onChange={e => setFormPurchaseDate(e.target.value)} 
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Status Section */}
               <div className="grid grid-cols-2 gap-4">
                 {/* Initial Status Dropdown */}
                 <div className="relative">
@@ -1223,8 +1543,12 @@ const Assets = () => {
                     </div>
                   )}
                 </div>
-                {/* Assign to Employee Dropdown */}
-                {formStatus === 'Assigned' && (
+              </div>
+
+              {/* Assign To Employee & Date Section */}
+              {formStatus === 'Assigned' && (
+                <div className="grid grid-cols-2 gap-4 animate-scale-in">
+                  {/* Assign to Employee Dropdown */}
                   <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 mb-1">Assign To Employee *</label>
                     <button
@@ -1261,8 +1585,19 @@ const Assets = () => {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+
+                  {/* Assigned Date Picker */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Assigned Date</label>
+                    <input 
+                      type="date" 
+                      value={formAssignedDate} 
+                      onChange={e => setFormAssignedDate(e.target.value)} 
+                      className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200">
                   Cancel
@@ -1288,40 +1623,100 @@ const Assets = () => {
             <h3 className="font-extrabold text-slate-800 text-lg mt-4">{selectedAsset?.brand} {selectedAsset?.model}</h3>
             <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-bold mt-1 tracking-wide uppercase">{selectedAsset?.type}</span>
 
-            <div className="w-full mt-6 space-y-3 text-xs">
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Asset ID</span>
-                <span className="font-extrabold text-slate-800">{selectedAsset?.id}</span>
+            <div className="w-full mt-6 grid grid-cols-2 gap-x-5 gap-y-3 text-[11px] text-slate-700 overflow-y-auto max-h-[45vh] pr-1">
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset ID</span>
+                <span className="font-extrabold text-slate-800 mt-0.5">{selectedAsset?.id}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Serial Number</span>
-                <span className="font-mono font-bold text-slate-800">{selectedAsset?.serialNumber}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset Type</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.type}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Status</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                  selectedAsset?.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
-                  selectedAsset?.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
-                  selectedAsset?.status === 'Under Repair' ? 'bg-rose-50 text-rose-600 border-rose-100/60' :
-                  'bg-slate-900 text-slate-50 border-slate-900'
-                }`}>{selectedAsset?.status}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Asset Name</span>
+                <span className="font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.model}>{selectedAsset?.model}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Assigned To</span>
-                <span className="font-bold text-slate-800">
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Brand</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.brand}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Serial Number</span>
+                <span className="font-mono font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.serialNumber}>{selectedAsset?.serialNumber}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Charger Serial</span>
+                <span className="font-mono font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.chargerSerialNumber}>{selectedAsset?.chargerSerialNumber || 'N/A'}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Status</span>
+                <span className="mt-0.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                    selectedAsset?.status === 'Assigned' ? 'bg-blue-50 text-[#1E3A8A] border-blue-200/60' :
+                    selectedAsset?.status === 'Available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+                    selectedAsset?.status === 'Under Repair' ? 'bg-rose-50 text-rose-600 border-rose-100/60' :
+                    'bg-slate-900 text-slate-50 border-slate-900'
+                  }`}>{selectedAsset?.status}</span>
+                </span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Assigned To</span>
+                <span className="font-bold text-slate-800 mt-0.5 truncate" title={selectedAsset?.assignedTo ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name} (${selectedAsset.assignedTo})` : 'None'}>
                   {selectedAsset?.assignedTo 
-                    ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name} (${selectedAsset.assignedTo})`
+                    ? `${employees.find(e => e.id === selectedAsset.assignedTo)?.name}`
                     : 'None'
                   }
                 </span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-2">
-                <span className="font-semibold text-slate-400">Purchase Date</span>
-                <span className="font-bold text-slate-800">{selectedAsset?.purchaseDate}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Condition</span>
+                <span className="mt-0.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                    (selectedAsset?.condition || 'Good') === 'Good' ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' :
+                    (selectedAsset?.condition || 'Good') === 'Working' ? 'bg-blue-50 text-blue-600 border-blue-100/60' :
+                    'bg-rose-50 text-rose-600 border-rose-100/60'
+                  }`}>{selectedAsset?.condition || 'Good'}</span>
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-slate-400">Warranty Expiration</span>
-                <span className="font-bold text-slate-800 text-red-500">{selectedAsset?.warrantyEndDate}</span>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Purchase Date</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.purchaseDate}</span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Warranty Status</span>
+                <span className="mt-0.5">
+                  {(() => {
+                    if (!selectedAsset || !selectedAsset.warrantyEndDate || selectedAsset.warrantyEndDate === 'N/A') {
+                      return <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold border bg-slate-100 text-slate-500 border-slate-200">N/A</span>;
+                    }
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const parts = selectedAsset.warrantyEndDate.split(' ');
+                    let warrantyDate = null;
+                    if (parts.length === 3) {
+                      const day = parseInt(parts[0]);
+                      const monthIdx = months.indexOf(parts[1]);
+                      const year = parseInt(parts[2]);
+                      if (monthIdx !== -1 && !isNaN(day) && !isNaN(year)) {
+                        warrantyDate = new Date(year, monthIdx, day);
+                      }
+                    } else {
+                      const parsed = new Date(selectedAsset.warrantyEndDate);
+                      if (!isNaN(parsed.getTime())) {
+                        warrantyDate = parsed;
+                      }
+                    }
+                    const isWarrantyActive = warrantyDate ? warrantyDate > new Date() : true;
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                        isWarrantyActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100/60' : 'bg-rose-50 text-rose-600 border-rose-100/60'
+                      }`}>{isWarrantyActive ? 'Active' : 'Expired'}</span>
+                    );
+                  })()}
+                </span>
+              </div>
+              <div className="flex flex-col border-b border-slate-100/70 pb-1">
+                <span className="font-semibold text-slate-400 text-[10px]">Assigned Date</span>
+                <span className="font-bold text-slate-800 mt-0.5">{selectedAsset?.assignedDate || 'N/A'}</span>
               </div>
             </div>
 

@@ -64,6 +64,11 @@ const Repairs = () => {
   // Admin identity
   const currentAdminName = currentUser?.name ? `${currentUser.name} (Admin)` : 'Rakesh Reddy (Admin)';
 
+  const getDisplayStatus = (rep) => {
+    if (rep.status === 'Cancelled') return 'Cancelled';
+    return rep.acceptedBy ? rep.status : 'Pending';
+  };
+
   // 1. Calculate dynamic statistics
   const totalRepairsCount = repairs.length;
   const myAcceptedCount = repairs.filter(r =>
@@ -72,16 +77,16 @@ const Repairs = () => {
       r.assignedTo?.toLowerCase().includes((currentUser?.name || 'Rakesh').toLowerCase())
     )
   ).length;
-  const inProgressCount = repairs.filter(r => r.status === 'In Progress').length;
-  const awaitingCount = repairs.filter(r => r.status === 'Awaiting Parts').length;
-  const completedCount = repairs.filter(r => r.status === 'Completed').length;
-  const cancelledCount = repairs.filter(r => r.status === 'Cancelled').length;
+  const inProgressCount = repairs.filter(r => getDisplayStatus(r) === 'In Progress').length;
+  const awaitingCount = repairs.filter(r => getDisplayStatus(r) === 'Awaiting Parts').length;
+  const completedCount = repairs.filter(r => getDisplayStatus(r) === 'Completed').length;
+  const cancelledCount = repairs.filter(r => getDisplayStatus(r) === 'Cancelled').length;
 
   // 2. Filter repairs list based on search and tabs
   const filteredRepairs = repairs.filter(rep => {
     const asset = assets.find(a => a.id === rep.assetId);
     const reporter = employees.find(e => e.id === rep.reportedBy);
-    const searchString = `${rep.id} ${rep.assetId} ${asset ? asset.brand : ''} ${asset ? asset.model : ''} ${rep.issue} ${reporter ? reporter.name : ''} ${rep.acceptedBy || ''} ${rep.status}`.toLowerCase();
+    const searchString = `${rep.id} ${rep.assetId} ${asset ? asset.brand : ''} ${asset ? asset.model : ''} ${rep.issue} ${reporter ? reporter.name : ''} ${rep.acceptedBy || ''} ${getDisplayStatus(rep)}`.toLowerCase();
 
     const matchesSearch = searchString.includes(searchTerm.toLowerCase());
     let matchesTab = true;
@@ -91,7 +96,7 @@ const Repairs = () => {
         rep.assignedTo?.toLowerCase().includes((currentUser?.name || 'Rakesh').toLowerCase())
       ));
     } else if (activeTab !== 'All') {
-      matchesTab = rep.status === activeTab;
+      matchesTab = getDisplayStatus(rep) === activeTab;
     }
 
     return matchesSearch && matchesTab;
@@ -304,12 +309,13 @@ const Repairs = () => {
                         </td>
                         <td className="py-3.5 px-2 text-slate-600 truncate max-w-[100px]">{rep.issue}</td>
                         <td className="py-3.5 px-2">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase whitespace-nowrap inline-block text-center min-w-[85px] ${rep.status === 'In Progress' ? 'bg-emerald-50 text-emerald-600' :
-                              rep.status === 'Awaiting Parts' ? 'bg-amber-50 text-amber-600' :
-                                rep.status === 'Completed' ? 'bg-blue-50 text-blue-600' :
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase whitespace-nowrap inline-block text-center min-w-[85px] ${getDisplayStatus(rep) === 'In Progress' ? 'bg-emerald-50 text-emerald-600' :
+                              getDisplayStatus(rep) === 'Awaiting Parts' ? 'bg-amber-50 text-amber-600' :
+                                getDisplayStatus(rep) === 'Completed' ? 'bg-blue-50 text-blue-600' :
+                                  getDisplayStatus(rep) === 'Pending' ? 'bg-slate-100 text-slate-600' :
                                   'bg-slate-100 text-slate-600'
                             }`}>
-                            {rep.status}
+                            {getDisplayStatus(rep)}
                           </span>
                         </td>
                         <td className="py-3.5 px-2 font-semibold">
@@ -460,12 +466,13 @@ const Repairs = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${selectedRepair.status === 'In Progress' ? 'bg-emerald-50 text-emerald-600' :
-                      selectedRepair.status === 'Awaiting Parts' ? 'bg-amber-50 text-amber-600' :
-                        selectedRepair.status === 'Completed' ? 'bg-blue-50 text-blue-600' :
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${getDisplayStatus(selectedRepair) === 'In Progress' ? 'bg-emerald-50 text-emerald-600' :
+                      getDisplayStatus(selectedRepair) === 'Awaiting Parts' ? 'bg-amber-50 text-amber-600' :
+                        getDisplayStatus(selectedRepair) === 'Completed' ? 'bg-blue-50 text-blue-600' :
+                          getDisplayStatus(selectedRepair) === 'Pending' ? 'bg-slate-100 text-slate-600' :
                           'bg-slate-100 text-slate-600'
                     }`}>
-                    {selectedRepair.status}
+                    {getDisplayStatus(selectedRepair)}
                   </span>
                   <button
                     type="button"
@@ -524,12 +531,20 @@ const Repairs = () => {
                         acceptRepair(selectedRepair.id, currentAdminName);
                         showToast(`Accepted ticket ${selectedRepair.id}! Assigned to ${currentAdminName}.`);
                       }}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
                     >
                       + Accept Ticket
                     </button>
                   )}
                 </div>
+                {selectedRepair.acceptedBy && (
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-400">Accepted Date</span>
+                    <span className="font-bold text-slate-700">
+                      {selectedRepair.acceptedDate || selectedRepair.updates.find(u => u.message.toLowerCase().includes('accepted'))?.date || 'N/A'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="font-semibold text-slate-400">Assigned To</span>
                   <span className="font-bold text-slate-700">{selectedRepair.assignedTo || 'IT Support Team'}</span>

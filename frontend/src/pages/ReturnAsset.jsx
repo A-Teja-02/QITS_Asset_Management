@@ -291,14 +291,13 @@ const ReturnAsset = () => {
   const displayedHistory = showAllHistory ? allReturnHistory : allReturnHistory.slice(0, 5);
 
   const handleExportReturnHistory = () => {
-    const headers = ['Return ID', 'Employee', 'Employee ID', 'Assets Returned', 'Return Date', 'Returned To', 'Reason', 'Condition', 'Details'];
+    const headers = ['Return ID', 'Employee', 'Employee ID', 'Assets Returned', 'Return Date', 'Reason', 'Condition', 'Details'];
     const rows = allReturnHistory.map(item => [
       item.id,
       `"${item.employeeName}"`,
       item.employeeId,
       `"${item.assetsCount}"`,
       `"${item.returnDate}"`,
-      `"${item.returnedTo}"`,
       `"${item.reason}"`,
       `"${item.condition}"`,
       `"${item.details.replace(/"/g, '""')}"`
@@ -328,24 +327,24 @@ const ReturnAsset = () => {
 
       {/* Progress tracker wizard header */}
       <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto text-xs font-bold text-slate-400">
-          <div className="flex items-center gap-2 text-blue-600">
-            <span className="h-6 w-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto text-xs font-bold">
+          <div className="flex items-center gap-2 text-[#1E3A8A]">
+            <span className="h-6 w-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-[10px]">1</span>
             <span>Select Employee</span>
           </div>
-          <div className="h-0.5 bg-slate-100 flex-1 hidden sm:block mx-4" />
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px]">2</span>
+          <div className="h-0.5 bg-blue-100 flex-1 hidden sm:block mx-4" />
+          <div className="flex items-center gap-2 text-[#1E3A8A]">
+            <span className="h-6 w-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-[10px]">2</span>
             <span>Select Assets</span>
           </div>
-          <div className="h-0.5 bg-slate-100 flex-1 hidden sm:block mx-4" />
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px]">3</span>
+          <div className="h-0.5 bg-blue-100 flex-1 hidden sm:block mx-4" />
+          <div className="flex items-center gap-2 text-[#1E3A8A]">
+            <span className="h-6 w-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-[10px]">3</span>
             <span>Return Details</span>
           </div>
-          <div className="h-0.5 bg-slate-100 flex-1 hidden sm:block mx-4" />
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px]">4</span>
+          <div className="h-0.5 bg-blue-100 flex-1 hidden sm:block mx-4" />
+          <div className="flex items-center gap-2 text-[#1E3A8A]">
+            <span className="h-6 w-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-[10px]">4</span>
             <span>Review & Confirm</span>
           </div>
         </div>
@@ -702,7 +701,6 @@ const ReturnAsset = () => {
                 <th className="pb-3 px-4">Employee</th>
                 <th className="pb-3 px-4">Assets Returned</th>
                 <th className="pb-3 px-4">Return Date</th>
-                <th className="pb-3 px-4">Returned By</th>
                 <th className="pb-3 px-4">Reason</th>
                 <th className="pb-3 px-4">Condition</th>
                 <th className="pb-3 pl-4 text-right">Actions</th>
@@ -720,7 +718,6 @@ const ReturnAsset = () => {
                   </td>
                   <td className="py-4 px-4 font-bold text-blue-600">{item.assetsCount}</td>
                   <td className="py-4 px-4 text-slate-500">{item.returnDate}</td>
-                  <td className="py-4 px-4 font-semibold text-slate-700">{item.returnedBy}</td>
                   <td className="py-4 px-4 text-slate-500">{item.reason}</td>
                   <td className="py-4 px-4">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${

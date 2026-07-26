@@ -22,7 +22,8 @@ import {
   Link2,
   ArrowLeft,
   ChevronDown,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { useAssetManager } from '../hooks/useAssetManager';
 import Avatar from '../components/Avatar';
@@ -32,6 +33,7 @@ const AssignAsset = () => {
   const { 
     employees, 
     assets, 
+    categories,
     assignAssets, 
     activity,
     showToast 
@@ -41,6 +43,7 @@ const AssignAsset = () => {
   const [selectedEmpId, setSelectedEmpId] = useState('');
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [viewLogModal, setViewLogModal] = useState({ isOpen: false, log: null });
   
   useEffect(() => {
     if (!selectedEmpId && (employees || []).length > 0) {
@@ -374,37 +377,62 @@ const AssignAsset = () => {
             {activeTab === 'search' ? (
               selectedCategory === null ? (
                 /* Category Picker Grid */
-                <div className="grid grid-cols-2 gap-4 max-h-72 overflow-y-auto pr-1">
-                  {[
-                    { name: 'Laptop', icon: Laptop },
-                    { name: 'Monitor', icon: Monitor },
-                    { name: 'Mouse', icon: Mouse },
-                    { name: 'Keyboard', icon: Keyboard },
-                    { name: 'Headset', icon: Headphones },
-                    { name: 'Printer', icon: Printer },
-                    { name: 'Docking Station', icon: Link2 }
-                  ].map((cat) => {
-                    const availableCount = assets.filter(
-                      a => a.status === 'Available' && a.type === cat.name && !selectedAssetIds.includes(a.id)
-                    ).length;
+                (() => {
+                  const getCategoryIcon = (catName) => {
+                    const name = catName.toLowerCase();
+                    if (name.includes('laptop')) return Laptop;
+                    if (name.includes('monitor')) return Monitor;
+                    if (name.includes('mouse')) return Mouse;
+                    if (name.includes('keyboard')) return Keyboard;
+                    if (name.includes('headphones') || name.includes('headset') || name.includes('audio')) return Headphones;
+                    if (name.includes('printer')) return Printer;
+                    if (name.includes('cpu') || name.includes('scanner')) return Cpu;
+                    return Link2;
+                  };
 
-                    return (
-                      <div 
-                        key={cat.name}
-                        onClick={() => setSelectedCategory(cat.name)}
-                        className="p-4 border border-slate-100 hover:border-blue-500 rounded-2xl flex items-center gap-3 cursor-pointer hover:shadow-md hover:shadow-blue-500/5 transition-all group bg-slate-50/50 hover:bg-white"
-                      >
-                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
-                          <cat.icon className="h-5 w-5" />
+                  const groupedCategories = (categories || []).reduce((acc, cat) => {
+                    const groupName = cat.ownerEntity || 'Quadrant IT Services Asset';
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(cat);
+                    return acc;
+                  }, {});
+
+                  return (
+                    <div className="space-y-6 max-h-72 overflow-y-auto pr-1">
+                      {Object.entries(groupedCategories).map(([groupName, cats]) => (
+                        <div key={groupName} className="space-y-2">
+                          <h4 className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1">
+                            {groupName}s
+                          </h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            {cats.map((cat) => {
+                              const IconComponent = getCategoryIcon(cat.name);
+                              const availableCount = assets.filter(
+                                a => a.status === 'Available' && a.type.toLowerCase().trim() === cat.name.toLowerCase().trim() && !selectedAssetIds.includes(a.id)
+                              ).length;
+
+                              return (
+                                <div 
+                                  key={cat.id}
+                                  onClick={() => setSelectedCategory(cat.name)}
+                                  className="p-3 border border-slate-100 hover:border-blue-500 rounded-2xl flex items-center gap-3 cursor-pointer hover:shadow-md hover:shadow-blue-500/5 transition-all group bg-slate-50/50 hover:bg-white"
+                                >
+                                  <div className="p-2 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+                                    <IconComponent className="h-4 w-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-all truncate">{cat.name}</h4>
+                                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{availableCount} Available</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-all truncate">{cat.name}</h4>
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{availableCount} Available</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ))}
+                    </div>
+                  );
+                })()
               ) : (
                 /* Category View List */
                 <div className="space-y-4">
@@ -420,7 +448,7 @@ const AssignAsset = () => {
                   <div className="text-xs font-bold text-slate-800 flex items-center justify-between pb-2 border-b border-slate-50">
                     <span>Available {selectedCategory}s</span>
                     <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-extrabold">
-                      {assets.filter(a => a.status === 'Available' && a.type === selectedCategory && !selectedAssetIds.includes(a.id)).length} items
+                      {assets.filter(a => a.status === 'Available' && a.type.toLowerCase().trim() === selectedCategory.toLowerCase().trim() && !selectedAssetIds.includes(a.id)).length} items
                     </span>
                   </div>
 
@@ -447,10 +475,10 @@ const AssignAsset = () => {
                     {assets.filter(asset => {
                       const isAvailable = asset.status === 'Available';
                       const isNotBasket = !selectedAssetIds.includes(asset.id);
-                      const isSelectedCat = asset.type === selectedCategory;
+                      const isSameType = asset.type.toLowerCase().trim() === selectedCategory.toLowerCase().trim();
                       const searchString = `${asset.id} ${asset.brand} ${asset.model} ${asset.serialNumber}`.toLowerCase();
                       const matchesSearch = searchString.includes(searchTerm.toLowerCase());
-                      return isAvailable && isNotBasket && isSelectedCat && matchesSearch;
+                      return isAvailable && isNotBasket && isSameType && matchesSearch;
                     }).length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-8">
                         No available {selectedCategory}s matching query.
@@ -459,7 +487,7 @@ const AssignAsset = () => {
                       assets.filter(asset => {
                         const isAvailable = asset.status === 'Available';
                         const isNotBasket = !selectedAssetIds.includes(asset.id);
-                        const isSelectedCat = asset.type === selectedCategory;
+                        const isSelectedCat = asset.type.toLowerCase().trim() === selectedCategory.toLowerCase().trim();
                         const searchString = `${asset.id} ${asset.brand} ${asset.model} ${asset.serialNumber}`.toLowerCase();
                         const matchesSearch = searchString.includes(searchTerm.toLowerCase());
                         return isAvailable && isNotBasket && isSelectedCat && matchesSearch;
@@ -613,127 +641,6 @@ const AssignAsset = () => {
         </div>
       </div>
 
-      {/* Bottom Section: Recent Assignments logs list */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h3 className="text-base font-bold text-slate-800">Assignments</h3>
-          
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                placeholder="Start Date"
-                className="bg-transparent border-0 outline-none text-xs text-slate-600 focus:ring-0 p-0 cursor-pointer"
-              />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">to</span>
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                placeholder="End Date"
-                className="bg-transparent border-0 outline-none text-xs text-slate-600 focus:ring-0 p-0 cursor-pointer"
-              />
-            </div>
-            {(filterStartDate || filterEndDate) && (
-              <button
-                onClick={() => {
-                  setFilterStartDate('');
-                  setFilterEndDate('');
-                }}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all flex items-center gap-1 hover:underline cursor-pointer"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={handleExportCSV}
-              className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              title="Export filtered assignments to CSV"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              <span>Export CSV</span>
-            </button>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="pb-3 pr-4">Employee</th>
-                <th className="pb-3 px-4">Asset(s)</th>
-                <th className="pb-3 px-4">Assigned By</th>
-                <th className="pb-3 px-4">Assignment Date</th>
-                <th className="pb-3 pl-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-              {recentAssignmentsLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold">
-                    No assignments found within this date range.
-                  </td>
-                </tr>
-              ) : (
-                recentAssignmentsLogs.slice(0, 5).map((log, index) => {
-                  // Extract detail information: matches anything inside parentheses at the end, e.g. (EMP001) or (QEMP002)
-                  const empIdMatch = log.details.match(/\(([^)]+)\)$/) || log.details.match(/\(([^)]+)\)/);
-                  const empId = empIdMatch ? empIdMatch[1] : '';
-                  const emp = employees.find(e => e.id === empId);
-
-                  // Extract name from log details before the parentheses, e.g. "to Rahul Sharma (QEMP002)"
-                  const nameMatch = log.details.match(/to\s+([^(]+)/);
-                  const extractedName = nameMatch ? nameMatch[1].trim() : 'Employee';
-                  const displayName = emp ? emp.name : extractedName;
-
-                  // Extract asset ID from details, e.g. "Assigned asset LT0001 to..."
-                  const assetIdMatch = log.details.match(/asset\s+(\S+)/i);
-                  const assetId = assetIdMatch ? assetIdMatch[1] : '';
-                  const assetObj = assets.find(a => a.id === assetId);
-                  const assetLabel = assetObj ? `${assetObj.brand} ${assetObj.model} (${assetId})` : (assetId || 'Asset');
-
-                  return (
-                    <tr key={index} className="hover:bg-slate-50/50">
-                      <td className="py-4 pr-4 font-bold">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={displayName} className="h-6 w-6 rounded-full" textSize="text-[8px]" />
-                          <span>{displayName} ({empId || 'EMP002'})</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-bold text-blue-600">
-                        {assetLabel}
-                      </td>
-                      <td className="py-4 px-4 font-semibold text-slate-600">{log.user} (Admin)</td>
-                      <td className="py-4 px-4 text-slate-500">{formatDateWithYear(log.dateTime)}</td>
-                      <td className="py-4 pl-4 text-right">
-                        <button 
-                          onClick={() => showToast(`Details: ${log.details}`, "info")}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="text-center pt-2 border-t border-slate-100">
-          <button className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-all">
-            View all assignments
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

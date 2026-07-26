@@ -21,7 +21,7 @@ const DashboardLayout = () => {
   return (
     <div className="flex bg-[#f4f1ee] min-h-screen font-sans relative overflow-hidden">
       {/* Light transparent watermark centered in background across all pages */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.045] z-0 select-none flex items-center justify-center">
+      <div className={`fixed inset-0 pointer-events-none opacity-[0.12] z-0 select-none flex items-center justify-center ${isEmployee ? '' : 'translate-x-16 md:translate-x-32'}`}>
         <img src={logoImg} alt="Watermark Background Logo" className="w-[500px] h-[500px] md:w-[700px] md:h-[700px] object-contain" />
       </div>
 
@@ -34,7 +34,7 @@ const DashboardLayout = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative z-40">
         {/* Top Header */}
         <Header />
 

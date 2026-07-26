@@ -88,12 +88,6 @@ const Settings = () => {
           <form onSubmit={handleSaveProfile} className="space-y-6">
             <div className="flex flex-col sm:flex-row items-center gap-6 pb-2">
               <Avatar name={fullName} className="h-20 w-20 rounded-2xl border shadow-sm" textSize="text-xl" />
-              <button 
-                type="button"
-                className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs rounded-xl transition-all"
-              >
-                Change Photo
-              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

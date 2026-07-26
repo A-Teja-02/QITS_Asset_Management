@@ -1009,90 +1009,92 @@ const Categories = () => {
                   </div>
 
                   {/* Modal Table Container */}
-                  <div className="overflow-y-auto flex-1 border border-slate-200/80 rounded-2xl">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        <tr>
-                          <th className="py-3 px-4">Asset ID</th>
-                          <th className="py-3 px-4">Brand & Model</th>
-                          <th className="py-3 px-4">Serial Number</th>
-                          <th className="py-3 px-4">Status</th>
-                          <th className="py-3 px-4">Assigned To</th>
-                          <th className="py-3 px-4">Purchase Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
-                        {modalFiltered.length === 0 ? (
+                  <div className="overflow-x-auto border border-slate-200/80 rounded-2xl flex-1">
+                    <div className="min-w-[800px] h-full overflow-y-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
                           <tr>
-                            <td colSpan={6} className="py-10 text-center text-slate-400 font-semibold">
-                              No matching {selectedCategoryModal.name.toLowerCase()} assets found.
-                            </td>
+                            <th className="py-3 px-4">Asset ID</th>
+                            <th className="py-3 px-4">Brand & Model</th>
+                            <th className="py-3 px-4">Serial Number</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Assigned To</th>
+                            <th className="py-3 px-4">Purchase Date</th>
                           </tr>
-                        ) : (
-                          modalFiltered.map(asset => {
-                            const owner = employees.find(e => e.id === asset.assignedTo);
-                            const isAssigned = asset.status === 'Assigned';
-                            const isAvailable = asset.status === 'Available';
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
+                          {modalFiltered.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-10 text-center text-slate-400 font-semibold">
+                                No matching {selectedCategoryModal.name.toLowerCase()} assets found.
+                              </td>
+                            </tr>
+                          ) : (
+                            modalFiltered.map(asset => {
+                              const owner = employees.find(e => e.id === asset.assignedTo);
+                              const isAssigned = asset.status === 'Assigned';
+                              const isAvailable = asset.status === 'Available';
 
-                            return (
-                              <tr
-                                key={asset.id}
-                                className={`transition-all ${isAssigned
-                                  ? 'bg-blue-50/10 hover:bg-blue-50/25'
-                                  : isAvailable
-                                    ? 'bg-emerald-50/20 hover:bg-emerald-50/45'
-                                    : asset.status === 'Under Repair'
-                                      ? 'bg-rose-50/20 hover:bg-rose-50/40'
-                                      : 'hover:bg-slate-50'
-                                  }`}
-                              >
-                                <td className="py-3 px-4 font-extrabold text-blue-600">
-                                  <div className="flex items-center gap-2">
-                                    <AssetIconBadge type={asset.type} className="h-6 w-6 rounded-md" iconSize="h-3.5 w-3.5" />
-                                    <span>{asset.id}</span>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 font-bold text-slate-800">{asset.brand} {asset.model}</td>
-                                <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">{asset.serialNumber}</td>
-
-                                {/* Status badge: ASSIGNED in RED, AVAILABLE in GREEN */}
-                                <td className="py-3 px-4">
-                                  {isAssigned ? (
-                                    <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-blue-50 text-[#1E3A8A] border border-blue-200/60 shadow-2xs inline-block">
-                                      Assigned
-                                    </span>
-                                  ) : isAvailable ? (
-                                    <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-2xs inline-block">
-                                      Available
-                                    </span>
-                                  ) : asset.status === 'Under Repair' ? (
-                                    <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-rose-50 text-rose-600 border border-rose-200/60 shadow-2xs inline-block">
-                                      Under Repair
-                                    </span>
-                                  ) : (
-                                    <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-slate-900 text-slate-50 border border-slate-950 inline-block">
-                                      {asset.status}
-                                    </span>
-                                  )}
-                                </td>
-
-                                <td className="py-3 px-4">
-                                  {owner ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <Avatar name={owner.name} className="h-5 w-5 rounded-full" textSize="text-[7px]" />
-                                      <span className="font-semibold text-slate-800">{owner.name}</span>
+                              return (
+                                <tr
+                                  key={asset.id}
+                                  className={`transition-all ${isAssigned
+                                    ? 'bg-blue-50/10 hover:bg-blue-50/25'
+                                    : isAvailable
+                                      ? 'bg-emerald-50/20 hover:bg-emerald-50/45'
+                                      : asset.status === 'Under Repair'
+                                        ? 'bg-rose-50/20 hover:bg-rose-50/40'
+                                        : 'hover:bg-slate-50'
+                                    }`}
+                                >
+                                  <td className="py-3 px-4 font-extrabold text-blue-600">
+                                    <div className="flex items-center gap-2">
+                                      <AssetIconBadge type={asset.type} className="h-6 w-6 rounded-md" iconSize="h-3.5 w-3.5" />
+                                      <span>{asset.id}</span>
                                     </div>
-                                  ) : (
-                                    <span className="text-slate-400 font-medium italic">Unassigned</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-slate-500 font-semibold text-[11px]">{asset.purchaseDate || '10 May 2024'}</td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                                  </td>
+                                  <td className="py-3 px-4 font-bold text-slate-800">{asset.brand} {asset.model}</td>
+                                  <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">{asset.serialNumber}</td>
+
+                                  {/* Status badge: ASSIGNED in RED, AVAILABLE in GREEN */}
+                                  <td className="py-3 px-4">
+                                    {isAssigned ? (
+                                      <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-blue-50 text-[#1E3A8A] border border-blue-200/60 shadow-2xs inline-block">
+                                        Assigned
+                                      </span>
+                                    ) : isAvailable ? (
+                                      <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-2xs inline-block">
+                                        Available
+                                      </span>
+                                    ) : asset.status === 'Under Repair' ? (
+                                      <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-rose-50 text-rose-600 border border-rose-200/60 shadow-2xs inline-block">
+                                        Under Repair
+                                      </span>
+                                    ) : (
+                                      <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-slate-900 text-slate-50 border border-slate-950 inline-block">
+                                        {asset.status}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  <td className="py-3 px-4">
+                                    {owner ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <Avatar name={owner.name} className="h-5 w-5 rounded-full" textSize="text-[7px]" />
+                                        <span className="font-semibold text-slate-800">{owner.name}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-400 font-medium italic">Unassigned</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-500 font-semibold text-[11px]">{asset.purchaseDate || '10 May 2024'}</td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </>
               );

@@ -8,7 +8,7 @@ import QuadrantLogo from './QuadrantLogo';
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { notifications, markNotificationAsRead, currentUser, loginUser, logoutUser, showToast } = useAssetManager();
+  const { notifications, markNotificationAsRead, markAllNotificationsAsRead, currentUser, loginUser, logoutUser, showToast } = useAssetManager();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
@@ -19,6 +19,9 @@ const Header = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
+        if (showNotifications) {
+          markAllNotificationsAsRead();
+        }
         setShowNotifications(false);
       }
       if (adminMenuRef.current && !adminMenuRef.current.contains(event.target)) {
@@ -27,7 +30,7 @@ const Header = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showNotifications, markAllNotificationsAsRead]);
 
   // Map route paths to human-friendly titles matching the mockup headers
   const getPageTitle = () => {
@@ -134,7 +137,13 @@ const Header = () => {
         {/* Notifications Bell */}
         <div className="relative" ref={notifRef}>
           <button
-            onClick={() => setShowNotifications(prev => !prev)}
+            onClick={() => {
+              const willShow = !showNotifications;
+              setShowNotifications(willShow);
+              if (!willShow) {
+                markAllNotificationsAsRead();
+              }
+            }}
             className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all relative border border-slate-100 cursor-pointer"
           >
             <Bell className="h-5 w-5" />
@@ -183,7 +192,10 @@ const Header = () => {
               </div>
               <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
                 <button
-                  onClick={() => setShowNotifications(false)}
+                  onClick={() => {
+                    setShowNotifications(false);
+                    markAllNotificationsAsRead();
+                  }}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-all cursor-pointer"
                 >
                   Close panel

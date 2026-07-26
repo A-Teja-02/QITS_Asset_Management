@@ -1,17 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Users, 
-  UserCheck, 
-  UserX, 
-  FolderKey, 
-  Plus, 
-  Search, 
-  Filter, 
-  Eye, 
-  Pencil, 
-  Trash, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Users,
+  UserCheck,
+  UserX,
+  FolderKey,
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  Pencil,
+  Trash,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   Check,
   Upload,
@@ -30,11 +30,11 @@ import AssetIconBadge from '../components/AssetIcon';
 import AdminPasswordModal from '../components/AdminPasswordModal';
 
 const Employees = () => {
-  const { 
-    employees, 
-    assets, 
-    addEmployee, 
-    updateEmployee, 
+  const {
+    employees,
+    assets,
+    addEmployee,
+    updateEmployee,
     deleteEmployee,
     showToast
   } = useAssetManager();
@@ -47,11 +47,17 @@ const Employees = () => {
   const [deptFilter, setDeptFilter] = useState('All');
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const deptDropdownRef = useRef(null);
+  const [statusFilter, setStatusFilter] = useState('All'); // 'All' | 'Active' | 'Inactive'
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (deptDropdownRef.current && !deptDropdownRef.current.contains(e.target)) {
         setIsDeptDropdownOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
+        setIsStatusDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -67,8 +73,8 @@ const Employees = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-
-  // Form states
+  const [employeePopup, setEmployeePopup] = useState({ isOpen: false, type: 'Active' });
+  const [popupSearchTerm, setPopupSearchTerm] = useState('');
   const [formId, setFormId] = useState('');
   const [formName, setFormName] = useState('');
   const [formDept, setFormDept] = useState('IT');
@@ -77,6 +83,7 @@ const Employees = () => {
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formStatus, setFormStatus] = useState('Active');
+  const [formRole, setFormRole] = useState('Employee');
 
   const standardDepartments = ["IT", "HR", "Marketing", "Sales", "Finance"];
 
@@ -91,11 +98,12 @@ const Employees = () => {
 
   // Filter employees
   const filteredEmployees = employees.filter(emp => {
-    const assigned = assets.filter(a => a.assignedTo === emp.id);
+    const assigned = emp.status === 'Inactive' ? [] : assets.filter(a => a.assignedTo === emp.id);
     const searchString = `${emp.id} ${emp.name} ${emp.department} ${emp.designation} ${emp.email} ${emp.phone} ${emp.status} ${assigned.length} assets`.toLowerCase();
     const matchesSearch = searchString.includes(searchTerm.toLowerCase());
     const matchesDept = deptFilter === 'All' ? true : emp.department === deptFilter;
-    return matchesSearch && matchesDept;
+    const matchesStatus = statusFilter === 'All' ? true : emp.status === statusFilter;
+    return matchesSearch && matchesDept && matchesStatus;
   });
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
@@ -114,13 +122,14 @@ const Employees = () => {
     setFormEmail('');
     setFormPhone('');
     setFormStatus('Active');
+    setFormRole('Employee');
     setIsAddModalOpen(true);
   };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
     const targetId = formId.trim().toUpperCase();
-    
+
     // Validation: Check if employee ID already exists
     const idExists = employees.some(emp => emp.id.toLowerCase() === targetId.toLowerCase());
     if (idExists) {
@@ -136,7 +145,8 @@ const Employees = () => {
       designation: formDesig,
       email: formEmail,
       phone: formPhone,
-      status: formStatus
+      status: formStatus,
+      role: formRole
     });
     setIsAddModalOpen(false);
   };
@@ -151,6 +161,7 @@ const Employees = () => {
     setFormEmail(emp.email);
     setFormPhone(emp.phone);
     setFormStatus(emp.status);
+    setFormRole(emp.role || 'Employee');
     setIsEditModalOpen(true);
   };
 
@@ -164,7 +175,8 @@ const Employees = () => {
       designation: formDesig,
       email: formEmail,
       phone: formPhone,
-      status: formStatus
+      status: formStatus,
+      role: formRole
     });
     setIsEditModalOpen(false);
   };
@@ -242,12 +254,12 @@ const Employees = () => {
     const rows = employees.map(emp => {
       return `"${emp.id}","${emp.name}","${emp.department}","${emp.designation}","${emp.email}","${emp.phone}","${emp.status}"`;
     }).join("\n");
-    
+
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Employees_Export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `Employees_Export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -268,8 +280,8 @@ const Employees = () => {
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard icon={Users} title="Total Employees" value={totalEmployeesCount} color="blue" linkTo="/employees" linkLabel="View all employees" />
-        <MetricCard icon={UserCheck} title="Active Employees" value={activeCount} color="green" linkTo="/employees" linkLabel="View active employees" />
-        <MetricCard icon={UserX} title="Inactive Employees" value={inactiveCount} color="orange" linkTo="/employees" linkLabel="View inactive employees" />
+        <MetricCard icon={UserCheck} title="Active Employees" value={activeCount} color="green" onClick={() => { setPopupSearchTerm(''); setEmployeePopup({ isOpen: true, type: 'Active' }); }} />
+        <MetricCard icon={UserX} title="Inactive Employees" value={inactiveCount} color="orange" onClick={() => { setPopupSearchTerm(''); setEmployeePopup({ isOpen: true, type: 'Inactive' }); }} />
         <MetricCard icon={FolderKey} title="Departments" value={departmentsCount} color="purple" linkTo="/employees" linkLabel="View all departments" />
       </div>
 
@@ -296,7 +308,7 @@ const Employees = () => {
                 className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
-            
+
             {/* Custom Department Filter Dropdown */}
             <div className="relative" ref={deptDropdownRef}>
               <button
@@ -307,7 +319,7 @@ const Employees = () => {
                 <span>{deptFilter === 'All' ? 'All Departments' : deptFilter}</span>
                 <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isDeptDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              
+
               {isDeptDropdownOpen && (
                 <div className="absolute top-full left-0 mt-1.5 w-48 bg-white border border-slate-200/80 rounded-2xl shadow-xl py-1 z-30 animate-scale-in text-xs font-semibold text-slate-700">
                   {departmentsList.map(dept => (
@@ -319,9 +331,8 @@ const Employees = () => {
                         setCurrentPage(1);
                         setIsDeptDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                        deptFilter === dept ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
-                      }`}
+                      className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${deptFilter === dept ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
+                        }`}
                     >
                       <span>{dept === 'All' ? 'All Departments' : dept}</span>
                       {deptFilter === dept && <Check className="h-3.5 w-3.5 text-blue-600" />}
@@ -331,9 +342,42 @@ const Employees = () => {
               )}
             </div>
 
+            {/* Custom Status Filter Dropdown */}
+            <div className="relative" ref={statusDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                className="flex items-center justify-between gap-1.5 px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold cursor-pointer transition-all min-w-[130px]"
+              >
+                <span>{statusFilter === 'All' ? 'All Statuses' : statusFilter === 'Active' ? 'Active Only' : 'Inactive Only'}</span>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isStatusDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1.5 w-48 bg-white border border-slate-200/80 rounded-2xl shadow-xl py-1 z-30 animate-scale-in text-xs font-semibold text-slate-700">
+                  {['All', 'Active', 'Inactive'].map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setCurrentPage(1);
+                        setIsStatusDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition-colors flex items-center justify-between ${statusFilter === status ? 'bg-blue-50/50 text-blue-600 font-bold' : ''
+                        }`}
+                    >
+                      <span>{status === 'All' ? 'All Statuses' : status === 'Active' ? 'Active Only' : 'Inactive Only'}</span>
+                      {statusFilter === status && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Excel Import Trigger */}
             <div className="relative group">
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
                 className="h-8 w-8 rounded-full border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
@@ -347,7 +391,7 @@ const Employees = () => {
 
             {/* Excel Export Trigger */}
             <div className="relative group">
-              <button 
+              <button
                 type="button"
                 onClick={handleExportEmployees}
                 className="h-8 w-8 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-600 flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
@@ -361,7 +405,7 @@ const Employees = () => {
 
             {/* Add Employee Trigger */}
             <div className="relative group">
-              <button 
+              <button
                 type="button"
                 onClick={handleOpenAddModal}
                 className="h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition-all shadow-md shadow-blue-500/10 hover:scale-105 active:scale-95 cursor-pointer shrink-0"
@@ -400,10 +444,10 @@ const Employees = () => {
                 </tr>
               ) : (
                 paginatedEmployees.map((emp) => {
-                  const assignedAssets = assets.filter(a => a.assignedTo === emp.id);
+                  const assignedAssets = emp.status === 'Inactive' ? [] : assets.filter(a => a.assignedTo === emp.id);
                   return (
-                    <tr 
-                      key={emp.id} 
+                    <tr
+                      key={emp.id}
                       onClick={() => handleOpenViewModal(emp)}
                       className="hover:bg-slate-50/50 transition-all cursor-pointer font-medium"
                     >
@@ -421,7 +465,7 @@ const Employees = () => {
                       <td className="py-2.5 px-3 text-slate-500 truncate max-w-[140px]" title={emp.email}>{emp.email}</td>
                       <td className="py-2.5 px-3 text-slate-500 font-semibold whitespace-nowrap">{emp.phone}</td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <span 
+                        <span
                           onClick={(e) => { e.stopPropagation(); handleOpenViewModal(emp); }}
                           className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-blue-600 bg-blue-50 cursor-pointer hover:bg-blue-100 transition-all"
                         >
@@ -429,29 +473,28 @@ const Employees = () => {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
-                          emp.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${emp.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                          }`}>
                           {emp.status}
                         </span>
                       </td>
                       <td className="py-2.5 pl-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); handleOpenViewModal(emp); }}
                             className="p-1 hover:bg-slate-100 rounded-lg text-blue-600 transition-all cursor-pointer"
                             title="View"
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => { e.stopPropagation(); handleOpenEditModal(emp); }}
                             className="p-1 hover:bg-slate-100 rounded-lg text-blue-600 transition-all cursor-pointer"
                             title="Edit"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteConfirmEmp({ id: emp.id, name: emp.name });
@@ -471,6 +514,129 @@ const Employees = () => {
           </table>
         </div>
 
+        {/* Active/Inactive Employees Pop-up Modal */}
+      {employeePopup.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-fade-in relative">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl ${
+                  employeePopup.type === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                }`}>
+                  {employeePopup.type === 'Active' ? <UserCheck className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">
+                    {employeePopup.type === 'Active' ? 'Active Employees' : 'Inactive Employees'}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                    {employeePopup.type === 'Active' 
+                      ? 'Current staff members registered in the organization'
+                      : 'Former employees who went out of the organization (no active assets)'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64 min-w-[200px]">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Search className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search by ID or Name..."
+                    value={popupSearchTerm}
+                    onChange={(e) => setPopupSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
+                  />
+                </div>
+                <button 
+                  onClick={() => setEmployeePopup({ isOpen: false, type: 'Active' })}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer shrink-0"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content Table */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl bg-slate-50/50">
+                <table className="w-full text-left border-collapse text-xs min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-extrabold uppercase tracking-wider border-b border-slate-100 whitespace-nowrap">
+                      <th className="py-3 px-4">Employee</th>
+                      <th className="py-3 px-4">Employee ID</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4">Designation</th>
+                      <th className="py-3 px-4">Contact Info</th>
+                      {employeePopup.type === 'Active' && <th className="py-3 px-4 text-center">Assigned Assets</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {employees
+                      .filter(emp => emp.status === employeePopup.type)
+                      .filter(emp => {
+                        if (!popupSearchTerm) return true;
+                        const term = popupSearchTerm.toLowerCase();
+                        return (
+                          emp.name.toLowerCase().includes(term) ||
+                          emp.id.toLowerCase().includes(term)
+                        );
+                      })
+                      .map(emp => {
+                        const assignedAssets = assets.filter(a => a.assignedTo === emp.id);
+                        return (
+                          <tr key={emp.id} className="hover:bg-white transition-all whitespace-nowrap">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <Avatar name={emp.name} className="h-8 w-8 rounded-lg shrink-0" />
+                                <span className="font-bold text-slate-800">{emp.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 font-mono font-semibold">{emp.id}</td>
+                            <td className="py-3 px-4 font-semibold text-slate-600">{emp.department}</td>
+                            <td className="py-3 px-4 text-slate-500 font-semibold">{emp.designation}</td>
+                            <td className="py-3 px-4">
+                              <div className="text-[10px] space-y-0.5">
+                                <p className="text-slate-600 font-semibold">{emp.email}</p>
+                                <p className="text-slate-400 font-semibold">{emp.phone}</p>
+                              </div>
+                            </td>
+                            {employeePopup.type === 'Active' && (
+                              <td className="py-3 px-4 text-center">
+                                {assignedAssets.length > 0 ? (
+                                  <span className="inline-flex items-center justify-center font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100 text-[10px]">
+                                    {assignedAssets.length} {assignedAssets.length === 1 ? 'Asset' : 'Assets'}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 font-semibold text-[10px]">None</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setEmployeePopup({ isOpen: false, type: 'Active' })}
+                className="py-2 px-5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         {/* Pagination controls */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500">
@@ -478,7 +644,7 @@ const Employees = () => {
               Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} entries
             </span>
             <div className="flex items-center gap-1">
-              <button 
+              <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
                 className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl disabled:opacity-40 transition-all"
@@ -511,18 +677,17 @@ const Employees = () => {
                     <button
                       key={p}
                       onClick={() => setCurrentPage(p)}
-                      className={`h-8 w-8 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                        currentPage === p 
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20' 
+                      className={`h-8 w-8 rounded-xl border text-xs font-bold transition-all cursor-pointer ${currentPage === p
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20'
                           : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
+                        }`}
                     >
                       {p}
                     </button>
                   )
                 ));
               })()}
-              <button 
+              <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl disabled:opacity-40 transition-all"
@@ -549,30 +714,30 @@ const Employees = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Employee ID *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formId} 
-                    onChange={e => setFormId(e.target.value)} 
+                  <input
+                    type="text"
+                    required
+                    value={formId}
+                    onChange={e => setFormId(e.target.value)}
                     placeholder="e.g. EMP008"
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formName} 
-                    onChange={e => setFormName(e.target.value)} 
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
                     placeholder="e.g. Rahul Sharma"
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Department *</label>
-                  <select 
-                    value={formDept} 
+                  <select
+                    value={formDept}
                     onChange={e => setFormDept(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   >
@@ -581,36 +746,47 @@ const Employees = () => {
                     ))}
                   </select>
                   {formDept === 'Other' && (
-                    <input 
-                      type="text" 
-                      required 
-                      value={customDept} 
-                      onChange={e => setCustomDept(e.target.value)} 
+                    <input
+                      type="text"
+                      required
+                      value={customDept}
+                      onChange={e => setCustomDept(e.target.value)}
                       placeholder="Enter custom department name..."
                       className="w-full mt-2 p-2 border border-blue-200 bg-blue-50/30 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-semibold text-blue-900 animate-fade-in"
                     />
                   )}
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Role *</label>
+                  <select
+                    value={formRole}
+                    onChange={e => setFormRole(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-semibold text-slate-700"
+                  >
+                    <option value="Employee">Employee</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Designation *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formDesig} 
-                    onChange={e => setFormDesig(e.target.value)} 
+                  <input
+                    type="text"
+                    required
+                    value={formDesig}
+                    onChange={e => setFormDesig(e.target.value)}
                     placeholder="e.g. Network Engineer"
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Email Address *</label>
-                  <input 
-                    type="email" 
-                    required 
-                    value={formEmail} 
-                    onChange={e => setFormEmail(e.target.value)} 
+                  <input
+                    type="email"
+                    required
+                    value={formEmail}
+                    onChange={e => setFormEmail(e.target.value)}
                     placeholder="e.g. rahul@company.com"
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
@@ -619,19 +795,19 @@ const Employees = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Phone Number *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formPhone} 
-                    onChange={e => setFormPhone(e.target.value)} 
+                  <input
+                    type="text"
+                    required
+                    value={formPhone}
+                    onChange={e => setFormPhone(e.target.value)}
                     placeholder="e.g. +91 91234 56789"
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Status</label>
-                  <select 
-                    value={formStatus} 
+                  <select
+                    value={formStatus}
                     onChange={e => setFormStatus(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   >
@@ -640,6 +816,7 @@ const Employees = () => {
                   </select>
                 </div>
               </div>
+
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200">
                   Cancel
@@ -668,27 +845,27 @@ const Employees = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 mb-1">Employee ID</label>
-                  <input 
-                    type="text" 
-                    disabled 
-                    value={selectedEmployee?.id || ''} 
+                  <input
+                    type="text"
+                    disabled
+                    value={selectedEmployee?.id || ''}
                     className="w-full p-2 border border-slate-100 bg-slate-50/80 rounded-xl text-xs text-slate-400 font-semibold cursor-not-allowed focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formName} 
+                  <input
+                    type="text"
+                    required
+                    value={formName}
                     onChange={e => setFormName(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Department *</label>
-                  <select 
-                    value={formDept} 
+                  <select
+                    value={formDept}
                     onChange={e => setFormDept(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   >
@@ -697,34 +874,45 @@ const Employees = () => {
                     ))}
                   </select>
                   {formDept === 'Other' && (
-                    <input 
-                      type="text" 
-                      required 
-                      value={customDept} 
-                      onChange={e => setCustomDept(e.target.value)} 
+                    <input
+                      type="text"
+                      required
+                      value={customDept}
+                      onChange={e => setCustomDept(e.target.value)}
                       placeholder="Enter custom department name..."
                       className="w-full mt-2 p-2 border border-blue-200 bg-blue-50/30 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-semibold text-blue-900 animate-fade-in"
                     />
                   )}
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Role *</label>
+                  <select
+                    value={formRole}
+                    onChange={e => setFormRole(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-semibold text-slate-700"
+                  >
+                    <option value="Employee">Employee</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Designation *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formDesig} 
+                  <input
+                    type="text"
+                    required
+                    value={formDesig}
                     onChange={e => setFormDesig(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Email Address *</label>
-                  <input 
-                    type="email" 
-                    required 
-                    value={formEmail} 
+                  <input
+                    type="email"
+                    required
+                    value={formEmail}
                     onChange={e => setFormEmail(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
@@ -733,18 +921,18 @@ const Employees = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Phone Number *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={formPhone} 
+                  <input
+                    type="text"
+                    required
+                    value={formPhone}
                     onChange={e => setFormPhone(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">Status</label>
-                  <select 
-                    value={formStatus} 
+                  <select
+                    value={formStatus}
                     onChange={e => setFormStatus(e.target.value)}
                     className="w-full p-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
                   >
@@ -753,6 +941,7 @@ const Employees = () => {
                   </select>
                 </div>
               </div>
+
               <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200">
                   Cancel
@@ -830,7 +1019,7 @@ const Employees = () => {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setIsViewModalOpen(false)}
               className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/10 text-xs transition-all"
             >
@@ -853,14 +1042,14 @@ const Employees = () => {
               <p className="text-xs text-slate-500 mt-2">Are you sure you want to delete the employee record for {deleteConfirmEmp.name}? This action cannot be undone.</p>
             </div>
             <div className="flex items-center gap-3 pt-2 text-xs">
-              <button 
+              <button
                 type="button"
                 onClick={() => setDeleteConfirmEmp(null)}
                 className="flex-1 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-slate-500 transition-all cursor-pointer"
               >
                 Go Back
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={handleDelete}
                 className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all shadow-md shadow-red-500/10 cursor-pointer"
@@ -878,7 +1067,7 @@ const Employees = () => {
         title={passAuthModal.title}
         actionLabel={passAuthModal.actionLabel}
         onClose={() => setPassAuthModal({ isOpen: false, title: '', actionLabel: '', onSuccess: null })}
-        onSuccess={passAuthModal.onSuccess || (() => {})}
+        onSuccess={passAuthModal.onSuccess || (() => { })}
       />
 
       {/* Excel Import Modal for Employees */}
